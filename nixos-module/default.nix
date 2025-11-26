@@ -45,12 +45,6 @@ in
       default = true;
       description = "Whether to delete zip files after successful import";
     };
-
-    notifyOnImport = mkOption {
-      type = types.bool;
-      default = false;
-      description = "Send system notification on successful import";
-    };
   };
 
   config = mkIf cfg.enable {
@@ -110,14 +104,8 @@ in
 
             if [ $? -eq 0 ]; then
               echo "Successfully imported: $zipfile"
-              ${optionalString cfg.notifyOnImport ''
-                ${pkgs.libnotify}/bin/notify-send "Tindeq Import" "Successfully imported $(basename "$zipfile")"
-              ''}
             else
               echo "Failed to import: $zipfile"
-              ${optionalString cfg.notifyOnImport ''
-                ${pkgs.libnotify}/bin/notify-send -u critical "Tindeq Import Failed" "Failed to import $(basename "$zipfile")"
-              ''}
             fi
           done
         '';
@@ -143,9 +131,7 @@ in
       pathConfig = {
         # Trigger when any file is created or moved into the directory
         PathChanged = cfg.watchDirectory;
-        # Only trigger for files ending in .zip
         Unit = "tindeq-import.service";
-        # Make changes trigger immediately
         MakeDirectory = true;
         DirectoryMode = "0755";
       };

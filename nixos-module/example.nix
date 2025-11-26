@@ -33,10 +33,6 @@
     # Automatically delete zip files after successful import
     deleteAfterImport = true;
 
-    # Send desktop notifications on import success/failure
-    # (requires a user session with notification daemon)
-    notifyOnImport = false;
-
     # Optional: customize the user/group (defaults to "tindeq")
     # user = "tindeq";
     # group = "tindeq";
