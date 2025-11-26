@@ -6,8 +6,13 @@ A tool for importing, storing, and analyzing Tindeq finger strength training dat
 
 __version__ = "0.1.0"
 
-from .processor import TindeqSession, TindeqBatchExport
-from .storage import TindeqStorage
 from .analytics import TindeqAnalytics
+from .processor import TindeqBatchExport, TindeqSession
+from .storage import TindeqStorage
 
-__all__ = ["TindeqSession", "TindeqBatchExport", "TindeqStorage", "TindeqAnalytics"]
+__all__ = [
+    "TindeqSession",
+    "TindeqBatchExport",
+    "TindeqStorage",
+    "TindeqAnalytics",
+]

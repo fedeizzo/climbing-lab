@@ -3,13 +3,15 @@ Command-line interface for Tindeq Exporter
 """
 
 import argparse
-import sys
 import json
+import sys
 from pathlib import Path
 
+import pandas as pd
+
+from .analytics import TindeqAnalytics
 from .processor import TindeqBatchExport, TindeqSession
 from .storage import TindeqStorage
-from .analytics import TindeqAnalytics
 
 
 def cmd_import(args):
@@ -27,7 +29,7 @@ def cmd_import(args):
                 print(f"Found {len(batch.session_zips)} sessions\n")
 
                 for i, session_zip in enumerate(batch.session_zips):
-                    print(f"[{i+1}/{len(batch.session_zips)}] {session_zip.stem}")
+                    print(f"[{i + 1}/{len(batch.session_zips)}] {session_zip.stem}")
                     session = batch.load_session(i)
                     storage.import_session(session)
 
@@ -56,11 +58,7 @@ def cmd_import(args):
 def cmd_list(args):
     """List all sessions"""
     storage = TindeqStorage(args.storae_dir)
-    sessions = storage.list_sessions(
-        tag=args.tag,
-        start_date=args.from_date,
-        end_date=args.to_date
-    )
+    sessions = storage.list_sessions(tag=args.tag, start_date=args.from_date, end_date=args.to_date)
 
     if sessions.empty:
         print("No sessions found")
@@ -90,11 +88,7 @@ def cmd_progress(args):
     storage = TindeqStorage(args.storage_dir)
 
     try:
-        progress = storage.get_exercise_progress(
-            args.exercise,
-            start_date=args.from_date,
-            end_date=args.to_date
-        )
+        progress = storage.get_exercise_progress(args.exercise, start_date=args.from_date, end_date=args.to_date)
 
         if progress.empty:
             print(f"No data found for exercise: {args.exercise}")
@@ -104,18 +98,24 @@ def cmd_progress(args):
 
         if args.format == "table":
             # Group by date and side for cleaner display
-            summary = progress.groupby(['date', 'side']).agg({
-                'avg_weight': 'mean',
-                'peak_weight': 'max',
-                'rfd2080': 'mean'
-            }).round(2)
+            summary = (
+                progress.groupby(["date", "side"])
+                .agg(
+                    {
+                        "avg_weight": "mean",
+                        "peak_weight": "max",
+                        "rfd2080": "mean",
+                    }
+                )
+                .round(2)
+            )
             print(summary)
 
         elif args.format == "csv":
             print(progress.to_csv(index=False))
 
         elif args.format == "json":
-            print(progress.to_json(orient='records', indent=2))
+            print(progress.to_json(orient="records", indent=2))
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
@@ -127,23 +127,18 @@ def cmd_export(args):
     storage = TindeqStorage(args.storage_dir)
 
     if args.type == "sessions":
-        df = storage.list_sessions(
-            tag=args.tag,
-            start_date=args.from_date,
-            end_date=args.to_date
-        )
+        df = storage.list_sessions(tag=args.tag, start_date=args.from_date, end_date=args.to_date)
         output_file = args.output or "sessions.csv"
 
     elif args.type == "progress":
         if not args.exercise:
-            print("Error: --exercise is required for progress export", file=sys.stderr)
+            print(
+                "Error: --exercise is required for progress export",
+                file=sys.stderr,
+            )
             sys.exit(1)
 
-        df = storage.get_exercise_progress(
-            args.exercise,
-            start_date=args.from_date,
-            end_date=args.to_date
-        )
+        df = storage.get_exercise_progress(args.exercise, start_date=args.from_date, end_date=args.to_date)
         output_file = args.output or f"{args.exercise}_progress.csv"
 
     else:
@@ -165,14 +160,11 @@ def cmd_stats(args):
         print(f"Session ID: {args.session_id}\n")
 
         print("Exercises:")
-        for ex in summary['exercises']:
+        for ex in summary["exercises"]:
             print(f"  - {ex['name']}")
 
             if args.detailed:
-                rep_stats, set_stats = storage.get_exercise_stats(
-                    args.session_id,
-                    ex['name']
-                )
+                rep_stats, set_stats = storage.get_exercise_stats(args.session_id, ex["name"])
 
                 if not set_stats.empty:
                     print("\n    Set stats:")
@@ -202,17 +194,26 @@ def cmd_analyze(args):
         print(f"Longest: {result['streak']['longest_streak']} days")
         print(f"Last training: {result['streak']['last_training_date']}")
         print("\n🌅 Morning vs Evening:")
-        print(f"Morning: {result['morning_evening_split']['morning_count']} ({result['morning_evening_split']['morning_pct']:.1f}%)")
-        print(f"Evening: {result['morning_evening_split']['evening_count']} ({result['morning_evening_split']['evening_pct']:.1f}%)")
+        print(
+            f"Morning: {result['morning_evening_split']['morning_count']} "
+            f"({result['morning_evening_split']['morning_pct']:.1f}%)"
+        )
+        print(
+            f"Evening: {result['morning_evening_split']['evening_count']} "
+            f"({result['morning_evening_split']['evening_pct']:.1f}%)"
+        )
 
     elif args.type == "performance":
         if not args.exercise:
-            print("Error: --exercise is required for performance analysis", file=sys.stderr)
+            print(
+                "Error: --exercise is required for performance analysis",
+                file=sys.stderr,
+            )
             sys.exit(1)
 
         result = analytics.analyze_performance(args.exercise, args.metric, args.days)
 
-        if 'error' in result:
+        if "error" in result:
             print(f"Error: {result['error']}", file=sys.stderr)
             sys.exit(1)
 
@@ -233,12 +234,15 @@ def cmd_analyze(args):
 
     elif args.type == "fatigue":
         if not args.session_id or not args.exercise:
-            print("Error: --session-id and --exercise are required for fatigue analysis", file=sys.stderr)
+            print(
+                "Error: --session-id and --exercise are required for fatigue analysis",
+                file=sys.stderr,
+            )
             sys.exit(1)
 
         result = analytics.analyze_session_fatigue(args.session_id, args.exercise)
 
-        if 'error' in result:
+        if "error" in result:
             print(f"Error: {result['error']}", file=sys.stderr)
             sys.exit(1)
 
@@ -255,12 +259,15 @@ def cmd_analyze(args):
 
     elif args.type == "recovery":
         if not args.exercise:
-            print("Error: --exercise is required for recovery analysis", file=sys.stderr)
+            print(
+                "Error: --exercise is required for recovery analysis",
+                file=sys.stderr,
+            )
             sys.exit(1)
 
         result = analytics.analyze_recovery(args.exercise, args.days)
 
-        if 'error' in result:
+        if "error" in result:
             print(f"Error: {result['error']}", file=sys.stderr)
             sys.exit(1)
 
@@ -276,10 +283,12 @@ def cmd_analyze(args):
         result = analytics.compare_exercises(days=args.days)
 
         print(f"\n🏆 Exercise Comparison ({args.days} days)\n")
-        for ex in result['exercises']:
-            print(f"{ex['exercise']:30} {ex['avg_peak_weight']:6.2f} kg  "
-                  f"{ex['trend']:10}  {ex['change_pct']:+6.2f}%  "
-                  f"asymmetry: {ex['asymmetry_pct']:5.2f}%")
+        for ex in result["exercises"]:
+            print(
+                f"{ex['exercise']:30} {ex['avg_peak_weight']:6.2f} kg  "
+                f"{ex['trend']:10}  {ex['change_pct']:+6.2f}%  "
+                f"asymmetry: {ex['asymmetry_pct']:5.2f}%"
+            )
 
         print(f"\nStrongest: {result['strongest_exercise']}")
         print(f"Most improved: {result['most_improved']}")
@@ -287,32 +296,34 @@ def cmd_analyze(args):
     elif args.type == "weakpoints":
         result = analytics.identify_weak_points(days=args.days)
 
-        if 'error' in result:
+        if "error" in result:
             print(f"Error: {result['error']}", file=sys.stderr)
             sys.exit(1)
 
         print(f"\n🎯 Weak Points Analysis ({result['period_days']} days)\n")
 
-        if result['declining_exercises']:
+        if result["declining_exercises"]:
             print("⚠️  Declining exercises:")
-            for ex in result['declining_exercises']:
+            for ex in result["declining_exercises"]:
                 print(f"  - {ex['exercise']} ({ex['change_pct']:+.2f}%)")
             print()
 
-        if result['high_asymmetry_exercises']:
+        if result["high_asymmetry_exercises"]:
             print("⚠️  High asymmetry:")
-            for ex in result['high_asymmetry_exercises']:
+            for ex in result["high_asymmetry_exercises"]:
                 print(f"  - {ex['exercise']} ({ex['asymmetry_pct']:.2f}%)")
             print()
 
-        if result['weakest_exercise']:
-            print(f"⚠️  Weakest: {result['weakest_exercise']['exercise']} "
-                  f"({result['weakest_exercise']['avg_peak_weight']:.2f} kg)")
+        if result["weakest_exercise"]:
+            print(
+                f"⚠️  Weakest: {result['weakest_exercise']['exercise']} "
+                f"({result['weakest_exercise']['avg_peak_weight']:.2f} kg)"
+            )
             print()
 
-        if result['recommendations']:
+        if result["recommendations"]:
             print("💡 Recommendations:")
-            for rec in result['recommendations']:
+            for rec in result["recommendations"]:
                 print(f"  • {rec}")
 
 
@@ -324,7 +335,7 @@ def cmd_report(args):
     if args.type == "weekly":
         result = analytics.generate_weekly_report(weeks=args.weeks)
 
-        if 'error' in result:
+        if "error" in result:
             print(f"Error: {result['error']}", file=sys.stderr)
             sys.exit(1)
 
@@ -334,9 +345,11 @@ def cmd_report(args):
         print(f"Avg sessions/week: {result['avg_sessions_per_week']:.1f}\n")
 
         print("Weekly breakdown:")
-        for week in result['weekly_sessions']:
-            print(f"  Week {week['week']}: {week['session_count']} sessions "
-                  f"({week['week_start'].strftime('%Y-%m-%d')} - {week['week_end'].strftime('%Y-%m-%d')})")
+        for week in result["weekly_sessions"]:
+            print(
+                f"  Week {week['week']}: {week['session_count']} sessions "
+                f"({week['week_start'].strftime('%Y-%m-%d')} - {week['week_end'].strftime('%Y-%m-%d')})"
+            )
 
         if args.json:
             print("\n" + json.dumps(result, indent=2, default=str))
@@ -344,7 +357,7 @@ def cmd_report(args):
     elif args.type == "monthly":
         result = analytics.generate_monthly_report(months=args.months)
 
-        if 'error' in result:
+        if "error" in result:
             print(f"Error: {result['error']}", file=sys.stderr)
             sys.exit(1)
 
@@ -353,7 +366,7 @@ def cmd_report(args):
         print(f"Total sessions: {result['total_sessions']}\n")
 
         print("Monthly breakdown:")
-        for month in result['monthly_sessions']:
+        for month in result["monthly_sessions"]:
             print(f"  {month['month']}: {month['session_count']} sessions")
 
         print("\n📊 Consistency:")
@@ -361,7 +374,7 @@ def cmd_report(args):
         print(f"Training rate: {result['consistency']['frequency']['training_rate']:.1f}%")
 
         print("\n📈 Exercise Trends:")
-        for exercise, trend in result['exercise_trends'].items():
+        for exercise, trend in result["exercise_trends"].items():
             print(f"  {exercise:30} {trend['trend_direction']:10} {trend['change_pct']:+6.2f}%")
 
         if args.json:
@@ -384,10 +397,7 @@ def cmd_peakload_list(args):
     """List peakload entries"""
     storage = TindeqStorage(args.storage_dir)
 
-    peakloads = storage.list_peakloads(
-        start_date=args.from_date,
-        end_date=args.to_date
-    )
+    peakloads = storage.list_peakloads(start_date=args.from_date, end_date=args.to_date)
 
     if not peakloads:
         print("No peakload data found")
@@ -403,11 +413,11 @@ def cmd_peakload_list(args):
         print(f"{'Date':<20} {'Tag':<20} {'Left (kg)':<12} {'Right (kg)':<12} {'Comment'}")
         print("-" * 100)
         for entry in peakloads:
-            date_str = entry['date'][:16] if entry['date'] else 'N/A'
-            tag = entry['tag'][:19] if entry['tag'] else 'N/A'
-            left = f"{entry['left_max_weight']:.2f}" if entry['left_max_weight'] else 'N/A'
-            right = f"{entry['right_max_weight']:.2f}" if entry['right_max_weight'] else 'N/A'
-            comment = entry['comment'][:40] if entry['comment'] else ''
+            date_str = entry["date"][:16] if entry["date"] else "N/A"
+            tag = entry["tag"][:19] if entry["tag"] else "N/A"
+            left = f"{entry['left_max_weight']:.2f}" if entry["left_max_weight"] else "N/A"
+            right = f"{entry['right_max_weight']:.2f}" if entry["right_max_weight"] else "N/A"
+            comment = entry["comment"][:40] if entry["comment"] else ""
             print(f"{date_str:<20} {tag:<20} {left:<12} {right:<12} {comment}")
 
 
@@ -415,10 +425,7 @@ def cmd_peakload_trend(args):
     """Show peakload trends"""
     storage = TindeqStorage(args.storage_dir)
 
-    df = storage.get_peakload_timeseries(
-        start_date=args.from_date,
-        end_date=args.to_date
-    )
+    df = storage.get_peakload_timeseries(start_date=args.from_date, end_date=args.to_date)
 
     if df.empty:
         print("No peakload data found")
@@ -430,12 +437,12 @@ def cmd_peakload_trend(args):
     print(f"Total entries: {len(df)}\n")
 
     # Left hand stats
-    if df['left_max_weight'].notna().any():
-        left_mean = df['left_max_weight'].mean()
-        left_max = df['left_max_weight'].max()
-        left_min = df['left_max_weight'].min()
-        left_last = df['left_max_weight'].iloc[-1]
-        left_first = df['left_max_weight'].iloc[0]
+    if df["left_max_weight"].notna().any():
+        left_mean = df["left_max_weight"].mean()
+        left_max = df["left_max_weight"].max()
+        left_min = df["left_max_weight"].min()
+        left_last = df["left_max_weight"].iloc[-1]
+        left_first = df["left_max_weight"].iloc[0]
         left_change = ((left_last - left_first) / left_first * 100) if left_first > 0 else 0
 
         print("Left Hand:")
@@ -446,12 +453,12 @@ def cmd_peakload_trend(args):
         print(f"  Change: {left_change:+.1f}%\n")
 
     # Right hand stats
-    if df['right_max_weight'].notna().any():
-        right_mean = df['right_max_weight'].mean()
-        right_max = df['right_max_weight'].max()
-        right_min = df['right_max_weight'].min()
-        right_last = df['right_max_weight'].iloc[-1]
-        right_first = df['right_max_weight'].iloc[0]
+    if df["right_max_weight"].notna().any():
+        right_mean = df["right_max_weight"].mean()
+        right_max = df["right_max_weight"].max()
+        right_min = df["right_max_weight"].min()
+        right_last = df["right_max_weight"].iloc[-1]
+        right_first = df["right_max_weight"].iloc[0]
         right_change = ((right_last - right_first) / right_first * 100) if right_first > 0 else 0
 
         print("Right Hand:")
@@ -462,8 +469,8 @@ def cmd_peakload_trend(args):
         print(f"  Change: {right_change:+.1f}%\n")
 
     # Balance
-    if df['left_max_weight'].notna().any() and df['right_max_weight'].notna().any():
-        balance = (df['left_max_weight'] / df['right_max_weight'] * 100).mean()
+    if df["left_max_weight"].notna().any() and df["right_max_weight"].notna().any():
+        balance = (df["left_max_weight"] / df["right_max_weight"] * 100).mean()
         print(f"Average Balance: {balance:.1f}% (Left/Right ratio)")
 
 
@@ -471,13 +478,13 @@ def main():
     """Main CLI entry point"""
     parser = argparse.ArgumentParser(
         prog="tindeq-exporter",
-        description="Import and analyze Tindeq finger training data"
+        description="Import and analyze Tindeq finger training data",
     )
 
     parser.add_argument(
         "--storage-dir",
         default="tindeq_data",
-        help="Storage directory (default: tindeq_data)"
+        help="Storage directory (default: tindeq_data)",
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -488,12 +495,12 @@ def main():
     import_parser.add_argument(
         "--batch",
         action="store_true",
-        help="Import as batch export (multiple sessions)"
+        help="Import as batch export (multiple sessions)",
     )
     import_parser.add_argument(
         "--delete-after",
         action="store_true",
-        help="Delete the input zip file after successful import"
+        help="Delete the input zip file after successful import",
     )
     import_parser.set_defaults(func=cmd_import)
 
@@ -517,17 +524,13 @@ def main():
         "--format",
         choices=["table", "csv", "json"],
         default="table",
-        help="Output format"
+        help="Output format",
     )
     progress_parser.set_defaults(func=cmd_progress)
 
     # Export command
     export_parser = subparsers.add_parser("export", help="Export data to CSV")
-    export_parser.add_argument(
-        "type",
-        choices=["sessions", "progress"],
-        help="What to export"
-    )
+    export_parser.add_argument("type", choices=["sessions", "progress"], help="What to export")
     export_parser.add_argument("--exercise", help="Exercise name (for progress export)")
     export_parser.add_argument("--tag", help="Filter by tag")
     export_parser.add_argument("--from-date", help="Start date (YYYY-MM-DD)")
@@ -539,9 +542,10 @@ def main():
     stats_parser = subparsers.add_parser("stats", help="Show session statistics")
     stats_parser.add_argument("session_id", help="Session ID")
     stats_parser.add_argument(
-        "-d", "--detailed",
+        "-d",
+        "--detailed",
         action="store_true",
-        help="Show detailed stats per exercise"
+        help="Show detailed stats per exercise",
     )
     stats_parser.set_defaults(func=cmd_stats)
 
@@ -549,54 +553,52 @@ def main():
     analyze_parser = subparsers.add_parser("analyze", help="Analyze training data")
     analyze_parser.add_argument(
         "type",
-        choices=["consistency", "performance", "fatigue", "recovery", "compare", "weakpoints"],
-        help="Type of analysis"
+        choices=[
+            "consistency",
+            "performance",
+            "fatigue",
+            "recovery",
+            "compare",
+            "weakpoints",
+        ],
+        help="Type of analysis",
     )
-    analyze_parser.add_argument("--exercise", help="Exercise name (required for performance/fatigue/recovery)")
+    analyze_parser.add_argument(
+        "--exercise",
+        help="Exercise name (required for performance/fatigue/recovery)",
+    )
     analyze_parser.add_argument("--session-id", help="Session ID (required for fatigue)")
     analyze_parser.add_argument(
         "--metric",
         choices=["peak_weight", "avg_weight", "rfd2080"],
         default="peak_weight",
-        help="Metric to analyze (default: peak_weight)"
+        help="Metric to analyze (default: peak_weight)",
     )
     analyze_parser.add_argument(
         "--days",
         type=int,
         default=30,
-        help="Number of days to look back (default: 30)"
+        help="Number of days to look back (default: 30)",
     )
-    analyze_parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON"
-    )
+    analyze_parser.add_argument("--json", action="store_true", help="Output as JSON")
     analyze_parser.set_defaults(func=cmd_analyze)
 
     # Report command
     report_parser = subparsers.add_parser("report", help="Generate training reports")
-    report_parser.add_argument(
-        "type",
-        choices=["weekly", "monthly"],
-        help="Type of report"
-    )
+    report_parser.add_argument("type", choices=["weekly", "monthly"], help="Type of report")
     report_parser.add_argument(
         "--weeks",
         type=int,
         default=4,
-        help="Number of weeks for weekly report (default: 4)"
+        help="Number of weeks for weekly report (default: 4)",
     )
     report_parser.add_argument(
         "--months",
         type=int,
         default=3,
-        help="Number of months for monthly report (default: 3)"
+        help="Number of months for monthly report (default: 3)",
     )
-    report_parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Output as JSON"
-    )
+    report_parser.add_argument("--json", action="store_true", help="Output as JSON")
     report_parser.set_defaults(func=cmd_report)
 
     # Peakload commands
@@ -616,7 +618,7 @@ def main():
         "--format",
         choices=["table", "csv", "json"],
         default="table",
-        help="Output format"
+        help="Output format",
     )
     peakload_list_parser.set_defaults(func=cmd_peakload_list)
 

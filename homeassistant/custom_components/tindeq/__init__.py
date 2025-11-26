@@ -1,4 +1,5 @@
 """The Tindeq integration."""
+
 import logging
 from datetime import timedelta
 from pathlib import Path
@@ -6,9 +7,17 @@ from pathlib import Path
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import (
+    DataUpdateCoordinator,
+    UpdateFailed,
+)
 
-from .const import CONF_SCAN_INTERVAL, CONF_STORAGE_DIR, DEFAULT_SCAN_INTERVAL, DOMAIN
+from .const import (
+    CONF_SCAN_INTERVAL,
+    CONF_STORAGE_DIR,
+    DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -72,12 +81,10 @@ class TindeqDataUpdateCoordinator(DataUpdateCoordinator):
         """Fetch data from Tindeq storage."""
         try:
             # Import here to avoid loading heavy dependencies during setup
-            from tindeq_exporter.storage import TindeqStorage
             from tindeq_exporter.analytics import TindeqAnalytics
+            from tindeq_exporter.storage import TindeqStorage
 
-            return await self.hass.async_add_executor_job(
-                self._update_data, TindeqStorage, TindeqAnalytics
-            )
+            return await self.hass.async_add_executor_job(self._update_data, TindeqStorage, TindeqAnalytics)
         except Exception as err:
             raise UpdateFailed(f"Error communicating with Tindeq storage: {err}") from err
 
@@ -116,9 +123,7 @@ class TindeqDataUpdateCoordinator(DataUpdateCoordinator):
                 # In the future, this could be configurable
                 primary_exercise = exercises_list[0]["exercise_name"]
 
-                performance = analytics.analyze_performance(
-                    exercise_name=primary_exercise, days=30
-                )
+                performance = analytics.analyze_performance(exercise_name=primary_exercise, days=30)
                 if performance:
                     data["max_force_trend"] = performance["trends"]["max_force"]["change_percent"]
                     data["avg_force_trend"] = performance["trends"]["avg_force"]["change_percent"]
@@ -127,9 +132,7 @@ class TindeqDataUpdateCoordinator(DataUpdateCoordinator):
                         data["left_right_balance"] = performance["balance"]["balance_score"]
 
                 # Analyze fatigue
-                fatigue = analytics.analyze_session_fatigue(
-                    exercise_name=primary_exercise, days=7
-                )
+                fatigue = analytics.analyze_session_fatigue(exercise_name=primary_exercise, days=7)
                 if fatigue and fatigue["sessions"]:
                     # Average fatigue across recent sessions
                     avg_fatigue = sum(
@@ -138,9 +141,7 @@ class TindeqDataUpdateCoordinator(DataUpdateCoordinator):
                     data["intra_session_fatigue"] = avg_fatigue
 
                 # Analyze recovery
-                recovery = analytics.analyze_recovery(
-                    exercise_name=primary_exercise, days=7
-                )
+                recovery = analytics.analyze_recovery(exercise_name=primary_exercise, days=7)
                 if recovery and recovery["recoveries"]:
                     # Average recovery quality
                     avg_recovery = sum(
@@ -150,7 +151,7 @@ class TindeqDataUpdateCoordinator(DataUpdateCoordinator):
 
             # Analyze peakload data (last 30 days)
             peakload_analysis = analytics.analyze_peakload_trends(days=30)
-            if peakload_analysis and 'error' not in peakload_analysis:
+            if peakload_analysis and "error" not in peakload_analysis:
                 data["peakload_count"] = peakload_analysis["entry_count"]
                 data["peakload_left_current"] = peakload_analysis["left"]["current"]
                 data["peakload_right_current"] = peakload_analysis["right"]["current"]

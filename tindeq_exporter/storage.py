@@ -1,9 +1,10 @@
-import sqlite3
-import pandas as pd
-from pathlib import Path
-from typing import Optional, List, Dict, Tuple
-from datetime import datetime
 import hashlib
+import sqlite3
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+import pandas as pd
 
 
 class TindeqStorage:
@@ -165,8 +166,14 @@ class TindeqStorage:
         unique_str = f"{date.isoformat()}_{tag}"
         return hashlib.md5(unique_str.encode()).hexdigest()[:16]
 
-    def _generate_rep_id(self, session_id: str, exercise_id: int,
-                         set_num: int, rep_num: int, side: str) -> str:
+    def _generate_rep_id(
+        self,
+        session_id: str,
+        exercise_id: int,
+        set_num: int,
+        rep_num: int,
+        side: str,
+    ) -> str:
         """Generate unique rep ID"""
         unique_str = f"{session_id}_{exercise_id}_s{set_num}_r{rep_num}_{side}"
         return hashlib.md5(unique_str.encode()).hexdigest()[:16]
@@ -189,60 +196,69 @@ class TindeqStorage:
         try:
             # Load session settings
             settings = tindeq_session.get_settings()
-            date_str = settings['Date'].iloc[0]
+            date_str = settings["Date"].iloc[0]
             date = pd.to_datetime(date_str)
-            tag = settings['Tag'].iloc[0]
+            tag = settings["Tag"].iloc[0]
 
             session_id = self._generate_session_id(date, tag)
 
             # Check if session already exists
-            cursor.execute("SELECT session_id FROM sessions WHERE session_id = ?", (session_id,))
+            cursor.execute(
+                "SELECT session_id FROM sessions WHERE session_id = ?",
+                (session_id,),
+            )
             if cursor.fetchone():
                 print(f"Session {tag} from {date_str} already exists, skipping")
                 conn.close()
                 return session_id
 
             # Insert session
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO sessions
                 (session_id, date, tag, comment, countdown_time, unit, left_right,
                  alternate_mode, initial_side, switch_side_time)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                session_id,
-                date_str,
-                tag,
-                settings.get('Comment', [None]).iloc[0],
-                settings.get('Countdown Time', [None]).iloc[0],
-                settings.get('Unit', [None]).iloc[0],
-                settings.get('Left/Right', [None]).iloc[0] == 'Yes',
-                settings.get('Alternate Mode', [None]).iloc[0],
-                settings.get('Initial Side', [None]).iloc[0],
-                settings.get('Switch Side Time', [None]).iloc[0]
-            ))
+            """,
+                (
+                    session_id,
+                    date_str,
+                    tag,
+                    settings.get("Comment", [None]).iloc[0],
+                    settings.get("Countdown Time", [None]).iloc[0],
+                    settings.get("Unit", [None]).iloc[0],
+                    settings.get("Left/Right", [None]).iloc[0] == "Yes",
+                    settings.get("Alternate Mode", [None]).iloc[0],
+                    settings.get("Initial Side", [None]).iloc[0],
+                    settings.get("Switch Side Time", [None]).iloc[0],
+                ),
+            )
 
             # Import timeline
             timeline = tindeq_session.get_timeline()
             for _, row in timeline.iterrows():
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO timeline
                     (session_id, type, start_time, end_time, duration, side,
                      target_low_pct, target_high_pct, mvc_data, set_num, rep_num, exercise_name)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    session_id,
-                    row['Type'],
-                    row.get('Start Time'),
-                    row.get('End Time'),
-                    row.get('Duration'),
-                    row.get('Side'),
-                    row.get('Target Low (%)'),
-                    row.get('Target High (%)'),
-                    row.get('MVC'),
-                    row.get('Set'),
-                    row.get('Rep'),
-                    row.get('Name')
-                ))
+                """,
+                    (
+                        session_id,
+                        row["Type"],
+                        row.get("Start Time"),
+                        row.get("End Time"),
+                        row.get("Duration"),
+                        row.get("Side"),
+                        row.get("Target Low (%)"),
+                        row.get("Target High (%)"),
+                        row.get("MVC"),
+                        row.get("Set"),
+                        row.get("Rep"),
+                        row.get("Name"),
+                    ),
+                )
 
             # Import exercises and their data
             exercises = tindeq_session.list_exercises()
@@ -250,10 +266,13 @@ class TindeqStorage:
             for exercise_name in exercises:
                 # Insert exercise
                 exercise_normalized = exercise_name.lower().replace(" ", "_")
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO exercises (session_id, name, name_normalized)
                     VALUES (?, ?, ?)
-                """, (session_id, exercise_name, exercise_normalized))
+                """,
+                    (session_id, exercise_name, exercise_normalized),
+                )
                 exercise_id = cursor.lastrowid
 
                 # Load rep stats
@@ -262,38 +281,44 @@ class TindeqStorage:
 
                     # Import set stats
                     for _, stat_row in sets_stats.iterrows():
-                        for side in ['left', 'right']:
-                            if f'Average Weight {side.capitalize()}' in stat_row:
-                                cursor.execute("""
+                        for side in ["left", "right"]:
+                            if f"Average Weight {side.capitalize()}" in stat_row:
+                                cursor.execute(
+                                    """
                                     INSERT INTO set_stats
                                     (session_id, exercise_id, set_num, side, avg_weight, peak_weight, rfd2080)
                                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                                """, (
-                                    session_id,
-                                    exercise_id,
-                                    stat_row['Set'],
-                                    side,
-                                    stat_row.get(f'Average Weight {side.capitalize()}'),
-                                    stat_row.get(f'Peak Weight {side.capitalize()}'),
-                                    stat_row.get(f'RFD2080 {side.capitalize()}')
-                                ))
+                                """,
+                                    (
+                                        session_id,
+                                        exercise_id,
+                                        stat_row["Set"],
+                                        side,
+                                        stat_row.get(f"Average Weight {side.capitalize()}"),
+                                        stat_row.get(f"Peak Weight {side.capitalize()}"),
+                                        stat_row.get(f"RFD2080 {side.capitalize()}"),
+                                    ),
+                                )
 
                     # Import rep stats and timeseries data
                     for _, stat_row in reps_stats.iterrows():
-                        set_num = int(stat_row['Set'])
-                        rep_num = int(stat_row['Rep'])
+                        set_num = int(stat_row["Set"])
+                        rep_num = int(stat_row["Rep"])
 
-                        for side in ['left', 'right']:
-                            if f'Average Weight {side.capitalize()}' in stat_row:
+                        for side in ["left", "right"]:
+                            if f"Average Weight {side.capitalize()}" in stat_row:
                                 # Generate rep ID
-                                rep_id = self._generate_rep_id(session_id, exercise_id,
-                                                               set_num, rep_num, side)
+                                rep_id = self._generate_rep_id(
+                                    session_id,
+                                    exercise_id,
+                                    set_num,
+                                    rep_num,
+                                    side,
+                                )
 
                                 # Save timeseries data to parquet
                                 try:
-                                    rep_data = tindeq_session.get_rep_data(
-                                        exercise_name, set_num, rep_num, side
-                                    )
+                                    rep_data = tindeq_session.get_rep_data(exercise_name, set_num, rep_num, side)
 
                                     # Organize by year-month
                                     year_month = date.strftime("%Y-%m")
@@ -309,23 +334,37 @@ class TindeqStorage:
                                     relative_path = None
 
                                 # Insert rep
-                                cursor.execute("""
+                                cursor.execute(
+                                    """
                                     INSERT INTO reps
                                     (rep_id, session_id, exercise_id, set_num, rep_num, side, timeseries_path)
                                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                                """, (rep_id, session_id, exercise_id, set_num, rep_num, side, relative_path))
+                                """,
+                                    (
+                                        rep_id,
+                                        session_id,
+                                        exercise_id,
+                                        set_num,
+                                        rep_num,
+                                        side,
+                                        relative_path,
+                                    ),
+                                )
 
                                 # Insert rep stats
-                                cursor.execute("""
+                                cursor.execute(
+                                    """
                                     INSERT INTO rep_stats
                                     (rep_id, avg_weight, peak_weight, rfd2080)
                                     VALUES (?, ?, ?, ?)
-                                """, (
-                                    rep_id,
-                                    stat_row.get(f'Average Weight {side.capitalize()}'),
-                                    stat_row.get(f'Peak Weight {side.capitalize()}'),
-                                    stat_row.get(f'RFD2080 {side.capitalize()}')
-                                ))
+                                """,
+                                    (
+                                        rep_id,
+                                        stat_row.get(f"Average Weight {side.capitalize()}"),
+                                        stat_row.get(f"Peak Weight {side.capitalize()}"),
+                                        stat_row.get(f"RFD2080 {side.capitalize()}"),
+                                    ),
+                                )
 
                 except Exception as e:
                     print(f"Warning: Could not load stats for {exercise_name}: {e}")
@@ -340,9 +379,12 @@ class TindeqStorage:
         finally:
             conn.close()
 
-    def list_sessions(self, tag: Optional[str] = None,
-                     start_date: Optional[str] = None,
-                     end_date: Optional[str] = None) -> pd.DataFrame:
+    def list_sessions(
+        self,
+        tag: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+    ) -> pd.DataFrame:
         """
         List all sessions with optional filters
 
@@ -376,18 +418,24 @@ class TindeqStorage:
         conn = sqlite3.connect(self.db_path)
 
         # Session info
-        session = pd.read_sql_query(
-            "SELECT * FROM sessions WHERE session_id = ?",
-            conn, params=(session_id,)
-        ).iloc[0].to_dict()
+        session = (
+            pd.read_sql_query(
+                "SELECT * FROM sessions WHERE session_id = ?",
+                conn,
+                params=(session_id,),
+            )
+            .iloc[0]
+            .to_dict()
+        )
 
         # Exercises
         exercises = pd.read_sql_query(
             "SELECT * FROM exercises WHERE session_id = ?",
-            conn, params=(session_id,)
+            conn,
+            params=(session_id,),
         )
 
-        session['exercises'] = exercises.to_dict('records')
+        session["exercises"] = exercises.to_dict("records")
         conn.close()
         return session
 
@@ -398,31 +446,40 @@ class TindeqStorage:
         # Get exercise_id
         exercise = pd.read_sql_query(
             "SELECT exercise_id FROM exercises WHERE session_id = ? AND name = ?",
-            conn, params=(session_id, exercise_name)
+            conn,
+            params=(session_id, exercise_name),
         )
 
         if exercise.empty:
             conn.close()
             raise ValueError(f"Exercise '{exercise_name}' not found in session")
 
-        exercise_id = exercise['exercise_id'].iloc[0]
+        exercise_id = exercise["exercise_id"].iloc[0]
 
         # Get rep stats
-        rep_stats = pd.read_sql_query("""
+        rep_stats = pd.read_sql_query(
+            """
             SELECT r.set_num, r.rep_num, r.side, rs.avg_weight, rs.peak_weight, rs.rfd2080
             FROM reps r
             JOIN rep_stats rs ON r.rep_id = rs.rep_id
             WHERE r.exercise_id = ?
             ORDER BY r.set_num, r.rep_num, r.side
-        """, conn, params=(exercise_id,))
+        """,
+            conn,
+            params=(exercise_id,),
+        )
 
         # Get set stats
-        set_stats = pd.read_sql_query("""
+        set_stats = pd.read_sql_query(
+            """
             SELECT set_num, side, avg_weight, peak_weight, rfd2080
             FROM set_stats
             WHERE exercise_id = ?
             ORDER BY set_num, side
-        """, conn, params=(exercise_id,))
+        """,
+            conn,
+            params=(exercise_id,),
+        )
 
         conn.close()
         return rep_stats, set_stats
@@ -442,9 +499,12 @@ class TindeqStorage:
         parquet_path = self.timeseries_path / result[0]
         return pd.read_parquet(parquet_path)
 
-    def get_exercise_progress(self, exercise_name: str,
-                             start_date: Optional[str] = None,
-                             end_date: Optional[str] = None) -> pd.DataFrame:
+    def get_exercise_progress(
+        self,
+        exercise_name: str,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+    ) -> pd.DataFrame:
         """
         Get progress over time for a specific exercise
 
@@ -511,17 +571,17 @@ class TindeqStorage:
         for _, row in df.iterrows():
             try:
                 # Parse date - handle the format in the example (2025-18-11 which seems to be day-month-year)
-                date_str = row['date']
+                date_str = row["date"]
                 try:
                     # Try standard ISO format first
                     date = pd.to_datetime(date_str)
-                except:
+                except _:
                     # Try parsing as day-month-year
-                    parts = date_str.split(' ')
+                    parts = date_str.split(" ")
                     date_part = parts[0]
                     time_part = parts[1] if len(parts) > 1 else "00:00:00"
                     # Split date part and reorder
-                    date_components = date_part.split('-')
+                    date_components = date_part.split("-")
                     if len(date_components) == 3:
                         year, day, month = date_components
                         corrected_date_str = f"{year}-{month}-{day} {time_part}"
@@ -529,19 +589,22 @@ class TindeqStorage:
                     else:
                         raise ValueError(f"Cannot parse date: {date_str}")
 
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT OR REPLACE INTO peakloads
                     (date, tag, comment, unit, type, left_max_weight, right_max_weight)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    date.isoformat(),
-                    row.get('tag', ''),
-                    row.get('comment', ''),
-                    row.get('unit', 'SI'),
-                    row.get('type', 'left/right'),
-                    float(row['left max weight']) if pd.notna(row.get('left max weight')) else None,
-                    float(row['right max weight']) if pd.notna(row.get('right max weight')) else None
-                ))
+                """,
+                    (
+                        date.isoformat(),
+                        row.get("tag", ""),
+                        row.get("comment", ""),
+                        row.get("unit", "SI"),
+                        row.get("type", "left/right"),
+                        float(row["left max weight"]) if pd.notna(row.get("left max weight")) else None,
+                        float(row["right max weight"]) if pd.notna(row.get("right max weight")) else None,
+                    ),
+                )
                 imported += 1
             except Exception as e:
                 print(f"Warning: Failed to import row: {e}")
@@ -551,8 +614,7 @@ class TindeqStorage:
         conn.close()
         return imported
 
-    def list_peakloads(self, start_date: Optional[str] = None,
-                       end_date: Optional[str] = None) -> List[Dict]:
+    def list_peakloads(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> List[Dict]:
         """
         List peakload entries
 
@@ -580,10 +642,9 @@ class TindeqStorage:
         df = pd.read_sql_query(query, conn, params=params)
         conn.close()
 
-        return df.to_dict('records')
+        return df.to_dict("records")
 
-    def get_peakload_timeseries(self, start_date: Optional[str] = None,
-                                 end_date: Optional[str] = None) -> pd.DataFrame:
+    def get_peakload_timeseries(self, start_date: Optional[str] = None, end_date: Optional[str] = None) -> pd.DataFrame:
         """
         Get peakload data as timeseries DataFrame
 
@@ -612,7 +673,7 @@ class TindeqStorage:
 
         query += " ORDER BY date"
 
-        df = pd.read_sql_query(query, conn, params=params, parse_dates=['date'])
+        df = pd.read_sql_query(query, conn, params=params, parse_dates=["date"])
         conn.close()
 
         return df

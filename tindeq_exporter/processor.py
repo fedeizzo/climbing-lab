@@ -1,9 +1,10 @@
-import pandas as pd
-import zipfile
-import tempfile
-from pathlib import Path
-from typing import Dict, List, Tuple, Optional
 import re
+import tempfile
+import zipfile
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+import pandas as pd
 
 
 class TindeqSession:
@@ -38,7 +39,7 @@ class TindeqSession:
         self.session_dir = self._temp_base / self.session_name
         self.session_dir.mkdir(exist_ok=True, parents=True)
 
-        with zipfile.ZipFile(self.zip_path, 'r') as zf:
+        with zipfile.ZipFile(self.zip_path, "r") as zf:
             zf.extractall(self.session_dir)
 
         # Extract nested data and stats zips
@@ -48,13 +49,13 @@ class TindeqSession:
         if data_zip.exists():
             self.data_dir = self.session_dir / "data"
             self.data_dir.mkdir(exist_ok=True)
-            with zipfile.ZipFile(data_zip, 'r') as zf:
+            with zipfile.ZipFile(data_zip, "r") as zf:
                 zf.extractall(self.data_dir)
 
         if stats_zip.exists():
             self.stats_dir = self.session_dir / "stats"
             self.stats_dir.mkdir(exist_ok=True)
-            with zipfile.ZipFile(stats_zip, 'r') as zf:
+            with zipfile.ZipFile(stats_zip, "r") as zf:
                 zf.extractall(self.stats_dir)
 
     def cleanup(self):
@@ -104,7 +105,7 @@ class TindeqSession:
 
         # Read, skipping the first 2 header rows
         df = pd.read_csv(filepath, skiprows=2)
-        df.columns = ['time_s', 'force_kg']
+        df.columns = ["time_s", "force_kg"]
         return df
 
     def get_exercise_stats(self, exercise: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -148,7 +149,7 @@ class TindeqSession:
                 set_num, rep_num, side = match.groups()
                 key = f"s{set_num}_r{rep_num}_{side}"
                 df = pd.read_csv(filename, skiprows=2)
-                df.columns = ['time_s', 'force_kg']
+                df.columns = ["time_s", "force_kg"]
                 reps[key] = df
 
         return reps
@@ -171,7 +172,7 @@ class TindeqBatchExport:
 
     def _extract_batch(self):
         """Extract the batch zip to get individual session zips"""
-        with zipfile.ZipFile(self.batch_zip_path, 'r') as zf:
+        with zipfile.ZipFile(self.batch_zip_path, "r") as zf:
             zf.extractall(self.extract_dir)
 
         # Find all session zip files
@@ -187,15 +188,17 @@ class TindeqBatchExport:
 
     def load_all_sessions(self) -> List[TindeqSession]:
         """Load all sessions (uses batch's temp directory)"""
-        return [TindeqSession(str(zip_path), temp_dir=str(self.extract_dir))
-                for zip_path in self.session_zips]
+        return [TindeqSession(str(zip_path), temp_dir=str(self.extract_dir)) for zip_path in self.session_zips]
 
     def list_sessions(self) -> List[str]:
         """List all session names with their dates"""
         sessions = []
         for zip_path in self.session_zips:
             # Parse date from filename
-            match = re.search(r'customSession_(\d{4}_\d{2}_\d{2}_\d{2}_\d{2}[AP]M_.+)\.zip', zip_path.name)
+            match = re.search(
+                r"customSession_(\d{4}_\d{2}_\d{2}_\d{2}_\d{2}[AP]M_.+)\.zip",
+                zip_path.name,
+            )
             if match:
                 sessions.append(match.group(1))
         return sessions
@@ -229,7 +232,7 @@ if __name__ == "__main__":
     for i, session_name in enumerate(batch.list_sessions()):
         print(f"  {i}: {session_name}")
 
-    print("\n" + "="*80 + "\n")
+    print("\n" + "=" * 80 + "\n")
 
     # Load first session as example
     session = batch.load_session(0)

@@ -1,6 +1,7 @@
 """Sensor platform for Tindeq integration."""
-from datetime import datetime
+
 import logging
+from datetime import datetime
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
@@ -22,10 +23,7 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
     # Create sensors for all defined types
-    sensors = [
-        TindeqSensor(coordinator, entry, sensor_type)
-        for sensor_type in SENSOR_TYPES
-    ]
+    sensors = [TindeqSensor(coordinator, entry, sensor_type) for sensor_type in SENSOR_TYPES]
 
     async_add_entities(sensors)
 

@@ -2,12 +2,13 @@
 High-level analytics functions for Tindeq training data
 """
 
-import pandas as pd
-from typing import Dict, Optional
 from datetime import datetime, timedelta
+from typing import Dict, Optional
 
-from .storage import TindeqStorage
+import pandas as pd
+
 from . import metrics
+from .storage import TindeqStorage
 
 
 class TindeqAnalytics:
@@ -30,8 +31,8 @@ class TindeqAnalytics:
         start_date = end_date - timedelta(days=days)
 
         sessions = self.storage.list_sessions(
-            start_date=start_date.strftime('%Y-%m-%d'),
-            end_date=end_date.strftime('%Y-%m-%d')
+            start_date=start_date.strftime("%Y-%m-%d"),
+            end_date=end_date.strftime("%Y-%m-%d"),
         )
 
         # All sessions for streak calculation
@@ -42,16 +43,18 @@ class TindeqAnalytics:
         split = metrics.calculate_morning_evening_split(sessions)
 
         return {
-            'period_days': days,
-            'frequency': frequency,
-            'streak': streak,
-            'morning_evening_split': split
+            "period_days": days,
+            "frequency": frequency,
+            "streak": streak,
+            "morning_evening_split": split,
         }
 
-    def analyze_performance(self,
-                           exercise: str,
-                           metric: str = 'peak_weight',
-                           days: Optional[int] = None) -> Dict:
+    def analyze_performance(
+        self,
+        exercise: str,
+        metric: str = "peak_weight",
+        days: Optional[int] = None,
+    ) -> Dict:
         """
         Analyze performance trends for an exercise
 
@@ -65,23 +68,23 @@ class TindeqAnalytics:
         """
         start_date = None
         if days:
-            start_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
+            start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
 
         progress = self.storage.get_exercise_progress(exercise, start_date=start_date)
 
         if progress.empty:
-            return {'error': f'No data found for exercise: {exercise}'}
+            return {"error": f"No data found for exercise: {exercise}"}
 
         trend = metrics.calculate_performance_trend(progress, metric)
         balance = metrics.calculate_left_right_balance(progress, metric)
         rolling = metrics.calculate_rolling_average(progress, metric, window=7)
 
         return {
-            'exercise': exercise,
-            'metric': metric,
-            'trend': trend,
-            'left_right_balance': balance,
-            'rolling_7day': rolling.tail(10).to_dict('records') if not rolling.empty else []
+            "exercise": exercise,
+            "metric": metric,
+            "trend": trend,
+            "left_right_balance": balance,
+            "rolling_7day": rolling.tail(10).to_dict("records") if not rolling.empty else [],
         }
 
     def analyze_session_fatigue(self, session_id: str, exercise: str) -> Dict:
@@ -98,20 +101,20 @@ class TindeqAnalytics:
         try:
             rep_stats, set_stats = self.storage.get_exercise_stats(session_id, exercise)
 
-            fatigue_peak = metrics.calculate_intra_session_fatigue(set_stats, 'peak_weight')
-            fatigue_avg = metrics.calculate_intra_session_fatigue(set_stats, 'avg_weight')
-            consistency = metrics.calculate_rep_consistency(rep_stats, 'peak_weight')
+            fatigue_peak = metrics.calculate_intra_session_fatigue(set_stats, "peak_weight")
+            fatigue_avg = metrics.calculate_intra_session_fatigue(set_stats, "avg_weight")
+            consistency = metrics.calculate_rep_consistency(rep_stats, "peak_weight")
 
             return {
-                'session_id': session_id,
-                'exercise': exercise,
-                'fatigue_peak_weight': fatigue_peak,
-                'fatigue_avg_weight': fatigue_avg,
-                'rep_consistency': consistency
+                "session_id": session_id,
+                "exercise": exercise,
+                "fatigue_peak_weight": fatigue_peak,
+                "fatigue_avg_weight": fatigue_avg,
+                "rep_consistency": consistency,
             }
 
         except Exception as e:
-            return {'error': str(e)}
+            return {"error": str(e)}
 
     def analyze_recovery(self, exercise: str, days: int = 30) -> Dict:
         """
@@ -124,36 +127,36 @@ class TindeqAnalytics:
         Returns:
             Dict with recovery analysis
         """
-        start_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
+        start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
         progress = self.storage.get_exercise_progress(exercise, start_date=start_date)
 
         if progress.empty:
-            return {'error': f'No data found for exercise: {exercise}'}
+            return {"error": f"No data found for exercise: {exercise}"}
 
         # Split by morning/evening based on tag
-        morning = progress[progress['tag'].str.contains('morning', case=False, na=False)]
-        evening = progress[progress['tag'].str.contains('evening', case=False, na=False)]
+        morning = progress[progress["tag"].str.contains("morning", case=False, na=False)]
+        evening = progress[progress["tag"].str.contains("evening", case=False, na=False)]
 
         if morning.empty or evening.empty:
             return {
-                'error': 'Insufficient morning/evening data',
-                'morning_sessions': len(morning),
-                'evening_sessions': len(evening)
+                "error": "Insufficient morning/evening data",
+                "morning_sessions": len(morning),
+                "evening_sessions": len(evening),
             }
 
-        recovery = metrics.calculate_recovery_quality(morning, evening, exercise, 'peak_weight')
+        recovery = metrics.calculate_recovery_quality(morning, evening, exercise, "peak_weight")
 
         # Also analyze time-of-day performance differences
-        morning_avg = morning.groupby('side')['peak_weight'].mean()
-        evening_avg = evening.groupby('side')['peak_weight'].mean()
+        morning_avg = morning.groupby("side")["peak_weight"].mean()
+        evening_avg = evening.groupby("side")["peak_weight"].mean()
 
         return {
-            'exercise': exercise,
-            'period_days': days,
-            'recovery_quality': recovery,
-            'morning_avg_by_side': morning_avg.to_dict(),
-            'evening_avg_by_side': evening_avg.to_dict(),
-            'preferred_time': 'morning' if recovery['morning_avg'] > recovery['evening_avg'] else 'evening'
+            "exercise": exercise,
+            "period_days": days,
+            "recovery_quality": recovery,
+            "morning_avg_by_side": morning_avg.to_dict(),
+            "evening_avg_by_side": evening_avg.to_dict(),
+            "preferred_time": "morning" if recovery["morning_avg"] > recovery["evening_avg"] else "evening",
         }
 
     def generate_weekly_report(self, weeks: int = 4) -> Dict:
@@ -167,53 +170,51 @@ class TindeqAnalytics:
             Dict with weekly summary data
         """
         end_date = datetime.now()
-        start_date = end_date - timedelta(weeks=weeks*7)
+        start_date = end_date - timedelta(weeks=weeks * 7)
 
         sessions = self.storage.list_sessions(
-            start_date=start_date.strftime('%Y-%m-%d'),
-            end_date=end_date.strftime('%Y-%m-%d')
+            start_date=start_date.strftime("%Y-%m-%d"),
+            end_date=end_date.strftime("%Y-%m-%d"),
         )
 
         if sessions.empty:
-            return {'error': 'No sessions found in this period'}
+            return {"error": "No sessions found in this period"}
 
-        sessions['date'] = pd.to_datetime(sessions['date'])
-        sessions['week'] = sessions['date'].dt.isocalendar().week
-        sessions['year'] = sessions['date'].dt.year
+        sessions["date"] = pd.to_datetime(sessions["date"])
+        sessions["week"] = sessions["date"].dt.isocalendar().week
+        sessions["year"] = sessions["date"].dt.year
 
         # Weekly aggregation
-        weekly = sessions.groupby(['year', 'week']).agg({
-            'session_id': 'count',
-            'date': ['min', 'max']
-        }).reset_index()
+        weekly = sessions.groupby(["year", "week"]).agg({"session_id": "count", "date": ["min", "max"]}).reset_index()
 
-        weekly.columns = ['year', 'week', 'session_count', 'week_start', 'week_end']
+        weekly.columns = [
+            "year",
+            "week",
+            "session_count",
+            "week_start",
+            "week_end",
+        ]
 
         exercises = self.storage.get_all_exercises()
         exercise_progress = {}
 
         # Get progress for each exercise
         for exercise in exercises:
-            progress = self.storage.get_exercise_progress(
-                exercise,
-                start_date=start_date.strftime('%Y-%m-%d')
-            )
+            progress = self.storage.get_exercise_progress(exercise, start_date=start_date.strftime("%Y-%m-%d"))
 
             if not progress.empty:
-                weekly_avg = progress.groupby(
-                    pd.to_datetime(progress['date']).dt.to_period('W')
-                )['peak_weight'].mean()
+                weekly_avg = progress.groupby(pd.to_datetime(progress["date"]).dt.to_period("W"))["peak_weight"].mean()
 
                 exercise_progress[exercise] = weekly_avg.to_dict()
 
         return {
-            'period': f'{weeks} weeks',
-            'start_date': start_date.strftime('%Y-%m-%d'),
-            'end_date': end_date.strftime('%Y-%m-%d'),
-            'weekly_sessions': weekly.to_dict('records'),
-            'exercise_progress': exercise_progress,
-            'total_sessions': len(sessions),
-            'avg_sessions_per_week': len(sessions) / weeks
+            "period": f"{weeks} weeks",
+            "start_date": start_date.strftime("%Y-%m-%d"),
+            "end_date": end_date.strftime("%Y-%m-%d"),
+            "weekly_sessions": weekly.to_dict("records"),
+            "exercise_progress": exercise_progress,
+            "total_sessions": len(sessions),
+            "avg_sessions_per_week": len(sessions) / weeks,
         }
 
     def generate_monthly_report(self, months: int = 3) -> Dict:
@@ -227,53 +228,52 @@ class TindeqAnalytics:
             Dict with monthly summary data
         """
         end_date = datetime.now()
-        start_date = end_date - timedelta(days=months*30)
+        start_date = end_date - timedelta(days=months * 30)
 
         sessions = self.storage.list_sessions(
-            start_date=start_date.strftime('%Y-%m-%d'),
-            end_date=end_date.strftime('%Y-%m-%d')
+            start_date=start_date.strftime("%Y-%m-%d"),
+            end_date=end_date.strftime("%Y-%m-%d"),
         )
 
         if sessions.empty:
-            return {'error': 'No sessions found in this period'}
+            return {"error": "No sessions found in this period"}
 
-        sessions['date'] = pd.to_datetime(sessions['date'])
-        sessions['month'] = sessions['date'].dt.to_period('M')
+        sessions["date"] = pd.to_datetime(sessions["date"])
+        sessions["month"] = sessions["date"].dt.to_period("M")
 
         # Monthly aggregation
-        monthly = sessions.groupby('month').agg({
-            'session_id': 'count',
-            'date': ['min', 'max']
-        }).reset_index()
+        monthly = sessions.groupby("month").agg({"session_id": "count", "date": ["min", "max"]}).reset_index()
 
-        monthly.columns = ['month', 'session_count', 'month_start', 'month_end']
-        monthly['month'] = monthly['month'].astype(str)
+        monthly.columns = [
+            "month",
+            "session_count",
+            "month_start",
+            "month_end",
+        ]
+        monthly["month"] = monthly["month"].astype(str)
 
         exercises = self.storage.get_all_exercises()
         exercise_trends = {}
 
         # Get trends for each exercise
         for exercise in exercises:
-            progress = self.storage.get_exercise_progress(
-                exercise,
-                start_date=start_date.strftime('%Y-%m-%d')
-            )
+            progress = self.storage.get_exercise_progress(exercise, start_date=start_date.strftime("%Y-%m-%d"))
 
             if not progress.empty:
-                trend = metrics.calculate_performance_trend(progress, 'peak_weight')
+                trend = metrics.calculate_performance_trend(progress, "peak_weight")
                 exercise_trends[exercise] = trend
 
         # Overall consistency
-        consistency = self.analyze_consistency(days=months*30)
+        consistency = self.analyze_consistency(days=months * 30)
 
         return {
-            'period': f'{months} months',
-            'start_date': start_date.strftime('%Y-%m-%d'),
-            'end_date': end_date.strftime('%Y-%m-%d'),
-            'monthly_sessions': monthly.to_dict('records'),
-            'exercise_trends': exercise_trends,
-            'consistency': consistency,
-            'total_sessions': len(sessions)
+            "period": f"{months} months",
+            "start_date": start_date.strftime("%Y-%m-%d"),
+            "end_date": end_date.strftime("%Y-%m-%d"),
+            "monthly_sessions": monthly.to_dict("records"),
+            "exercise_trends": exercise_trends,
+            "consistency": consistency,
+            "total_sessions": len(sessions),
         }
 
     def compare_exercises(self, days: int = 30) -> Dict:
@@ -286,7 +286,7 @@ class TindeqAnalytics:
         Returns:
             Dict with exercise comparisons
         """
-        start_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
+        start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
         exercises = self.storage.get_all_exercises()
 
         comparisons = []
@@ -295,26 +295,28 @@ class TindeqAnalytics:
             progress = self.storage.get_exercise_progress(exercise, start_date=start_date)
 
             if not progress.empty:
-                trend = metrics.calculate_performance_trend(progress, 'peak_weight')
-                balance = metrics.calculate_left_right_balance(progress, 'peak_weight')
+                trend = metrics.calculate_performance_trend(progress, "peak_weight")
+                balance = metrics.calculate_left_right_balance(progress, "peak_weight")
 
-                comparisons.append({
-                    'exercise': exercise,
-                    'avg_peak_weight': round(progress['peak_weight'].mean(), 2),
-                    'trend': trend['trend_direction'],
-                    'change_pct': trend['change_pct'],
-                    'asymmetry_pct': balance['asymmetry_pct'],
-                    'sessions': progress.groupby('date').ngroups
-                })
+                comparisons.append(
+                    {
+                        "exercise": exercise,
+                        "avg_peak_weight": round(progress["peak_weight"].mean(), 2),
+                        "trend": trend["trend_direction"],
+                        "change_pct": trend["change_pct"],
+                        "asymmetry_pct": balance["asymmetry_pct"],
+                        "sessions": progress.groupby("date").ngroups,
+                    }
+                )
 
         # Sort by performance
-        comparisons.sort(key=lambda x: x['avg_peak_weight'], reverse=True)
+        comparisons.sort(key=lambda x: x["avg_peak_weight"], reverse=True)
 
         return {
-            'period_days': days,
-            'exercises': comparisons,
-            'strongest_exercise': comparisons[0]['exercise'] if comparisons else None,
-            'most_improved': max(comparisons, key=lambda x: x['change_pct'])['exercise'] if comparisons else None
+            "period_days": days,
+            "exercises": comparisons,
+            "strongest_exercise": comparisons[0]["exercise"] if comparisons else None,
+            "most_improved": max(comparisons, key=lambda x: x["change_pct"])["exercise"] if comparisons else None,
         }
 
     def identify_weak_points(self, days: int = 30) -> Dict:
@@ -329,14 +331,14 @@ class TindeqAnalytics:
         """
         comparison = self.compare_exercises(days)
 
-        if not comparison['exercises']:
-            return {'error': 'No exercise data available'}
+        if not comparison["exercises"]:
+            return {"error": "No exercise data available"}
 
-        exercises = comparison['exercises']
+        exercises = comparison["exercises"]
 
         # Identify weak points
-        declining = [e for e in exercises if e['trend'] == 'declining']
-        high_asymmetry = [e for e in exercises if e['asymmetry_pct'] > 10]
+        declining = [e for e in exercises if e["trend"] == "declining"]
+        high_asymmetry = [e for e in exercises if e["asymmetry_pct"] > 10]
         weakest = exercises[-1] if exercises else None
 
         recommendations = []
@@ -351,11 +353,11 @@ class TindeqAnalytics:
             recommendations.append(f"Strengthen: {weakest['exercise']} (lowest absolute strength)")
 
         return {
-            'period_days': days,
-            'declining_exercises': declining,
-            'high_asymmetry_exercises': high_asymmetry,
-            'weakest_exercise': weakest,
-            'recommendations': recommendations
+            "period_days": days,
+            "declining_exercises": declining,
+            "high_asymmetry_exercises": high_asymmetry,
+            "weakest_exercise": weakest,
+            "recommendations": recommendations,
         }
 
     def analyze_peakload_trends(self, days: int = 30) -> Dict:
@@ -369,67 +371,63 @@ class TindeqAnalytics:
             Dictionary with peakload analysis results
         """
         from datetime import datetime, timedelta
+
         from .metrics import calculate_performance_trend
 
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days)
 
-        df = self.storage.get_peakload_timeseries(
-            start_date=start_date.isoformat(),
-            end_date=end_date.isoformat()
-        )
+        df = self.storage.get_peakload_timeseries(start_date=start_date.isoformat(), end_date=end_date.isoformat())
 
         if df.empty:
-            return {'error': 'No peakload data available'}
+            return {"error": "No peakload data available"}
 
         # Calculate trends for left and right hands
         left_trend = None
         right_trend = None
 
-        if df['left_max_weight'].notna().any():
-            left_data = df[['date', 'left_max_weight']].dropna()
+        if df["left_max_weight"].notna().any():
+            left_data = df[["date", "left_max_weight"]].dropna()
             if len(left_data) >= 2:
-                left_trend = calculate_performance_trend(
-                    left_data['date'],
-                    left_data['left_max_weight']
-                )
+                left_trend = calculate_performance_trend(left_data["date"], left_data["left_max_weight"])
 
-        if df['right_max_weight'].notna().any():
-            right_data = df[['date', 'right_max_weight']].dropna()
+        if df["right_max_weight"].notna().any():
+            right_data = df[["date", "right_max_weight"]].dropna()
             if len(right_data) >= 2:
-                right_trend = calculate_performance_trend(
-                    right_data['date'],
-                    right_data['right_max_weight']
-                )
+                right_trend = calculate_performance_trend(right_data["date"], right_data["right_max_weight"])
 
         # Calculate balance
-        balance_data = df[df['left_max_weight'].notna() & df['right_max_weight'].notna()]
+        balance_data = df[df["left_max_weight"].notna() & df["right_max_weight"].notna()]
         avg_balance = None
         if not balance_data.empty:
-            avg_balance = (balance_data['left_max_weight'] / balance_data['right_max_weight'] * 100).mean()
+            avg_balance = (balance_data["left_max_weight"] / balance_data["right_max_weight"] * 100).mean()
 
         # Latest values
         latest = df.iloc[-1] if not df.empty else None
 
         return {
-            'period_days': days,
-            'entry_count': len(df),
-            'left': {
-                'current': float(latest['left_max_weight']) if latest is not None and pd.notna(latest['left_max_weight']) else None,
-                'mean': float(df['left_max_weight'].mean()) if df['left_max_weight'].notna().any() else None,
-                'max': float(df['left_max_weight'].max()) if df['left_max_weight'].notna().any() else None,
-                'min': float(df['left_max_weight'].min()) if df['left_max_weight'].notna().any() else None,
-                'trend': left_trend
+            "period_days": days,
+            "entry_count": len(df),
+            "left": {
+                "current": float(latest["left_max_weight"])
+                if latest is not None and pd.notna(latest["left_max_weight"])
+                else None,
+                "mean": float(df["left_max_weight"].mean()) if df["left_max_weight"].notna().any() else None,
+                "max": float(df["left_max_weight"].max()) if df["left_max_weight"].notna().any() else None,
+                "min": float(df["left_max_weight"].min()) if df["left_max_weight"].notna().any() else None,
+                "trend": left_trend,
             },
-            'right': {
-                'current': float(latest['right_max_weight']) if latest is not None and pd.notna(latest['right_max_weight']) else None,
-                'mean': float(df['right_max_weight'].mean()) if df['right_max_weight'].notna().any() else None,
-                'max': float(df['right_max_weight'].max()) if df['right_max_weight'].notna().any() else None,
-                'min': float(df['right_max_weight'].min()) if df['right_max_weight'].notna().any() else None,
-                'trend': right_trend
+            "right": {
+                "current": float(latest["right_max_weight"])
+                if latest is not None and pd.notna(latest["right_max_weight"])
+                else None,
+                "mean": float(df["right_max_weight"].mean()) if df["right_max_weight"].notna().any() else None,
+                "max": float(df["right_max_weight"].max()) if df["right_max_weight"].notna().any() else None,
+                "min": float(df["right_max_weight"].min()) if df["right_max_weight"].notna().any() else None,
+                "trend": right_trend,
             },
-            'balance': {
-                'average': float(avg_balance) if avg_balance is not None else None,
-                'imbalance_pct': abs(100 - avg_balance) if avg_balance is not None else None
-            }
+            "balance": {
+                "average": float(avg_balance) if avg_balance is not None else None,
+                "imbalance_pct": abs(100 - avg_balance) if avg_balance is not None else None,
+            },
         }

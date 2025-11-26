@@ -1,16 +1,22 @@
 """Config flow for Tindeq integration."""
+
 import logging
 from pathlib import Path
 from typing import Any
 
+import homeassistant.helpers.config_validation as cv
 import voluptuous as vol
-
-from homeassistant import config_entries
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
-import homeassistant.helpers.config_validation as cv
 
-from .const import CONF_SCAN_INTERVAL, CONF_STORAGE_DIR, DEFAULT_SCAN_INTERVAL, DOMAIN
+from homeassistant import config_entries
+
+from .const import (
+    CONF_SCAN_INTERVAL,
+    CONF_STORAGE_DIR,
+    DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,8 +56,7 @@ async def validate_storage_dir(hass: HomeAssistant, storage_dir: str) -> dict[st
 
     if not await hass.async_add_executor_job(db_file.exists) and contents:
         _LOGGER.warning(
-            "Storage directory %s exists but doesn't contain tindeq.db. "
-            "Will be created on first import.",
+            "Storage directory %s exists but doesn't contain tindeq.db. Will be created on first import.",
             storage_dir,
         )
 
@@ -63,17 +68,13 @@ class TindeqConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Handle the initial step."""
         errors = {}
 
         if user_input is not None:
             # Validate storage directory
-            errors = await validate_storage_dir(
-                self.hass, user_input[CONF_STORAGE_DIR]
-            )
+            errors = await validate_storage_dir(self.hass, user_input[CONF_STORAGE_DIR])
 
             if not errors:
                 # Check if already configured with this storage directory
@@ -111,9 +112,7 @@ class TindeqOptionsFlowHandler(config_entries.OptionsFlow):
         """Initialize options flow."""
         self.config_entry = config_entry
 
-    async def async_step_init(
-        self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Manage the options."""
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
@@ -124,9 +123,7 @@ class TindeqOptionsFlowHandler(config_entries.OptionsFlow):
                 {
                     vol.Optional(
                         CONF_SCAN_INTERVAL,
-                        default=self.config_entry.options.get(
-                            CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
-                        ),
+                        default=self.config_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
                     ): cv.positive_int,
                 }
             ),
