@@ -131,6 +131,22 @@ class TindeqStorage:
             )
         """)
 
+        # Peakload table - manual peak load entries (simpler format)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS peakloads (
+                peakload_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TIMESTAMP NOT NULL,
+                tag TEXT,
+                comment TEXT,
+                unit TEXT,
+                type TEXT,
+                left_max_weight REAL,
+                right_max_weight REAL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(date, tag)
+            )
+        """)
+
         # Indexes for common queries
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_date ON sessions(date)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_tag ON sessions(tag)")
@@ -138,6 +154,8 @@ class TindeqStorage:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_reps_session ON reps(session_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_reps_exercise ON reps(exercise_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_timeline_session ON timeline(session_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_peakloads_date ON peakloads(date)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_peakloads_tag ON peakloads(tag)")
 
         conn.commit()
         conn.close()
@@ -473,3 +491,128 @@ class TindeqStorage:
         exercises = [row[0] for row in cursor.fetchall()]
         conn.close()
         return exercises
+
+    def import_peakload_csv(self, csv_path: str) -> int:
+        """
+        Import peakload data from CSV file
+
+        Args:
+            csv_path: Path to CSV file with peakload data
+
+        Returns:
+            Number of records imported
+        """
+        df = pd.read_csv(csv_path)
+
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        imported = 0
+        for _, row in df.iterrows():
+            try:
+                # Parse date - handle the format in the example (2025-18-11 which seems to be day-month-year)
+                date_str = row['date']
+                try:
+                    # Try standard ISO format first
+                    date = pd.to_datetime(date_str)
+                except:
+                    # Try parsing as day-month-year
+                    parts = date_str.split(' ')
+                    date_part = parts[0]
+                    time_part = parts[1] if len(parts) > 1 else "00:00:00"
+                    # Split date part and reorder
+                    date_components = date_part.split('-')
+                    if len(date_components) == 3:
+                        year, day, month = date_components
+                        corrected_date_str = f"{year}-{month}-{day} {time_part}"
+                        date = pd.to_datetime(corrected_date_str)
+                    else:
+                        raise ValueError(f"Cannot parse date: {date_str}")
+
+                cursor.execute("""
+                    INSERT OR REPLACE INTO peakloads
+                    (date, tag, comment, unit, type, left_max_weight, right_max_weight)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    date.isoformat(),
+                    row.get('tag', ''),
+                    row.get('comment', ''),
+                    row.get('unit', 'SI'),
+                    row.get('type', 'left/right'),
+                    float(row['left max weight']) if pd.notna(row.get('left max weight')) else None,
+                    float(row['right max weight']) if pd.notna(row.get('right max weight')) else None
+                ))
+                imported += 1
+            except Exception as e:
+                print(f"Warning: Failed to import row: {e}")
+                continue
+
+        conn.commit()
+        conn.close()
+        return imported
+
+    def list_peakloads(self, start_date: Optional[str] = None,
+                       end_date: Optional[str] = None) -> List[Dict]:
+        """
+        List peakload entries
+
+        Args:
+            start_date: Optional start date filter (ISO format)
+            end_date: Optional end date filter (ISO format)
+
+        Returns:
+            List of peakload dictionaries
+        """
+        conn = sqlite3.connect(self.db_path)
+
+        query = "SELECT * FROM peakloads WHERE 1=1"
+        params = []
+
+        if start_date:
+            query += " AND date >= ?"
+            params.append(start_date)
+        if end_date:
+            query += " AND date <= ?"
+            params.append(end_date)
+
+        query += " ORDER BY date DESC"
+
+        df = pd.read_sql_query(query, conn, params=params)
+        conn.close()
+
+        return df.to_dict('records')
+
+    def get_peakload_timeseries(self, start_date: Optional[str] = None,
+                                 end_date: Optional[str] = None) -> pd.DataFrame:
+        """
+        Get peakload data as timeseries DataFrame
+
+        Args:
+            start_date: Optional start date filter (ISO format)
+            end_date: Optional end date filter (ISO format)
+
+        Returns:
+            DataFrame with columns: date, tag, left_max_weight, right_max_weight
+        """
+        conn = sqlite3.connect(self.db_path)
+
+        query = """
+            SELECT date, tag, comment, left_max_weight, right_max_weight
+            FROM peakloads
+            WHERE 1=1
+        """
+        params = []
+
+        if start_date:
+            query += " AND date >= ?"
+            params.append(start_date)
+        if end_date:
+            query += " AND date <= ?"
+            params.append(end_date)
+
+        query += " ORDER BY date"
+
+        df = pd.read_sql_query(query, conn, params=params, parse_dates=['date'])
+        conn.close()
+
+        return df

@@ -368,6 +368,105 @@ def cmd_report(args):
             print("\n" + json.dumps(result, indent=2, default=str))
 
 
+def cmd_peakload_import(args):
+    """Import peakload data from CSV"""
+    storage = TindeqStorage(args.storage_dir)
+
+    try:
+        imported = storage.import_peakload_csv(args.csv_path)
+        print(f"✓ Imported {imported} peakload entries from {args.csv_path}")
+    except Exception as e:
+        print(f"✗ Failed to import peakload data: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def cmd_peakload_list(args):
+    """List peakload entries"""
+    storage = TindeqStorage(args.storage_dir)
+
+    peakloads = storage.list_peakloads(
+        start_date=args.from_date,
+        end_date=args.to_date
+    )
+
+    if not peakloads:
+        print("No peakload data found")
+        return
+
+    if args.format == "json":
+        print(json.dumps(peakloads, indent=2, default=str))
+    elif args.format == "csv":
+        df = pd.DataFrame(peakloads)
+        print(df.to_csv(index=False))
+    else:  # table
+        print(f"\nPeakload Entries ({len(peakloads)} total):\n")
+        print(f"{'Date':<20} {'Tag':<20} {'Left (kg)':<12} {'Right (kg)':<12} {'Comment'}")
+        print("-" * 100)
+        for entry in peakloads:
+            date_str = entry['date'][:16] if entry['date'] else 'N/A'
+            tag = entry['tag'][:19] if entry['tag'] else 'N/A'
+            left = f"{entry['left_max_weight']:.2f}" if entry['left_max_weight'] else 'N/A'
+            right = f"{entry['right_max_weight']:.2f}" if entry['right_max_weight'] else 'N/A'
+            comment = entry['comment'][:40] if entry['comment'] else ''
+            print(f"{date_str:<20} {tag:<20} {left:<12} {right:<12} {comment}")
+
+
+def cmd_peakload_trend(args):
+    """Show peakload trends"""
+    storage = TindeqStorage(args.storage_dir)
+
+    df = storage.get_peakload_timeseries(
+        start_date=args.from_date,
+        end_date=args.to_date
+    )
+
+    if df.empty:
+        print("No peakload data found")
+        return
+
+    # Calculate statistics
+    print("\nPeakload Trend Analysis\n")
+    print(f"Period: {df['date'].min()} to {df['date'].max()}")
+    print(f"Total entries: {len(df)}\n")
+
+    # Left hand stats
+    if df['left_max_weight'].notna().any():
+        left_mean = df['left_max_weight'].mean()
+        left_max = df['left_max_weight'].max()
+        left_min = df['left_max_weight'].min()
+        left_last = df['left_max_weight'].iloc[-1]
+        left_first = df['left_max_weight'].iloc[0]
+        left_change = ((left_last - left_first) / left_first * 100) if left_first > 0 else 0
+
+        print("Left Hand:")
+        print(f"  Current: {left_last:.2f} kg")
+        print(f"  Average: {left_mean:.2f} kg")
+        print(f"  Max: {left_max:.2f} kg")
+        print(f"  Min: {left_min:.2f} kg")
+        print(f"  Change: {left_change:+.1f}%\n")
+
+    # Right hand stats
+    if df['right_max_weight'].notna().any():
+        right_mean = df['right_max_weight'].mean()
+        right_max = df['right_max_weight'].max()
+        right_min = df['right_max_weight'].min()
+        right_last = df['right_max_weight'].iloc[-1]
+        right_first = df['right_max_weight'].iloc[0]
+        right_change = ((right_last - right_first) / right_first * 100) if right_first > 0 else 0
+
+        print("Right Hand:")
+        print(f"  Current: {right_last:.2f} kg")
+        print(f"  Average: {right_mean:.2f} kg")
+        print(f"  Max: {right_max:.2f} kg")
+        print(f"  Min: {right_min:.2f} kg")
+        print(f"  Change: {right_change:+.1f}%\n")
+
+    # Balance
+    if df['left_max_weight'].notna().any() and df['right_max_weight'].notna().any():
+        balance = (df['left_max_weight'] / df['right_max_weight'] * 100).mean()
+        print(f"Average Balance: {balance:.1f}% (Left/Right ratio)")
+
+
 def main():
     """Main CLI entry point"""
     parser = argparse.ArgumentParser(
@@ -499,6 +598,33 @@ def main():
         help="Output as JSON"
     )
     report_parser.set_defaults(func=cmd_report)
+
+    # Peakload commands
+    peakload_parser = subparsers.add_parser("peakload", help="Manage peakload data")
+    peakload_subparsers = peakload_parser.add_subparsers(dest="peakload_cmd", required=True)
+
+    # Peakload import
+    peakload_import_parser = peakload_subparsers.add_parser("import", help="Import peakload CSV")
+    peakload_import_parser.add_argument("csv_path", help="Path to CSV file with peakload data")
+    peakload_import_parser.set_defaults(func=cmd_peakload_import)
+
+    # Peakload list
+    peakload_list_parser = peakload_subparsers.add_parser("list", help="List peakload entries")
+    peakload_list_parser.add_argument("--from-date", help="Start date (YYYY-MM-DD)")
+    peakload_list_parser.add_argument("--to-date", help="End date (YYYY-MM-DD)")
+    peakload_list_parser.add_argument(
+        "--format",
+        choices=["table", "csv", "json"],
+        default="table",
+        help="Output format"
+    )
+    peakload_list_parser.set_defaults(func=cmd_peakload_list)
+
+    # Peakload trend
+    peakload_trend_parser = peakload_subparsers.add_parser("trend", help="Show peakload trends")
+    peakload_trend_parser.add_argument("--from-date", help="Start date (YYYY-MM-DD)")
+    peakload_trend_parser.add_argument("--to-date", help="End date (YYYY-MM-DD)")
+    peakload_trend_parser.set_defaults(func=cmd_peakload_trend)
 
     args = parser.parse_args()
 

@@ -357,3 +357,79 @@ class TindeqAnalytics:
             'weakest_exercise': weakest,
             'recommendations': recommendations
         }
+
+    def analyze_peakload_trends(self, days: int = 30) -> Dict:
+        """
+        Analyze peakload data trends
+
+        Args:
+            days: Number of days to analyze
+
+        Returns:
+            Dictionary with peakload analysis results
+        """
+        from datetime import datetime, timedelta
+        from .metrics import calculate_performance_trend
+
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=days)
+
+        df = self.storage.get_peakload_timeseries(
+            start_date=start_date.isoformat(),
+            end_date=end_date.isoformat()
+        )
+
+        if df.empty:
+            return {'error': 'No peakload data available'}
+
+        # Calculate trends for left and right hands
+        left_trend = None
+        right_trend = None
+
+        if df['left_max_weight'].notna().any():
+            left_data = df[['date', 'left_max_weight']].dropna()
+            if len(left_data) >= 2:
+                left_trend = calculate_performance_trend(
+                    left_data['date'],
+                    left_data['left_max_weight']
+                )
+
+        if df['right_max_weight'].notna().any():
+            right_data = df[['date', 'right_max_weight']].dropna()
+            if len(right_data) >= 2:
+                right_trend = calculate_performance_trend(
+                    right_data['date'],
+                    right_data['right_max_weight']
+                )
+
+        # Calculate balance
+        balance_data = df[df['left_max_weight'].notna() & df['right_max_weight'].notna()]
+        avg_balance = None
+        if not balance_data.empty:
+            avg_balance = (balance_data['left_max_weight'] / balance_data['right_max_weight'] * 100).mean()
+
+        # Latest values
+        latest = df.iloc[-1] if not df.empty else None
+
+        return {
+            'period_days': days,
+            'entry_count': len(df),
+            'left': {
+                'current': float(latest['left_max_weight']) if latest is not None and pd.notna(latest['left_max_weight']) else None,
+                'mean': float(df['left_max_weight'].mean()) if df['left_max_weight'].notna().any() else None,
+                'max': float(df['left_max_weight'].max()) if df['left_max_weight'].notna().any() else None,
+                'min': float(df['left_max_weight'].min()) if df['left_max_weight'].notna().any() else None,
+                'trend': left_trend
+            },
+            'right': {
+                'current': float(latest['right_max_weight']) if latest is not None and pd.notna(latest['right_max_weight']) else None,
+                'mean': float(df['right_max_weight'].mean()) if df['right_max_weight'].notna().any() else None,
+                'max': float(df['right_max_weight'].max()) if df['right_max_weight'].notna().any() else None,
+                'min': float(df['right_max_weight'].min()) if df['right_max_weight'].notna().any() else None,
+                'trend': right_trend
+            },
+            'balance': {
+                'average': float(avg_balance) if avg_balance is not None else None,
+                'imbalance_pct': abs(100 - avg_balance) if avg_balance is not None else None
+            }
+        }

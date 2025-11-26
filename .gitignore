@@ -9,5 +9,6 @@ exports
 .ropeproject
 .direnv
 *.zip
+*.csv
 result
 .ruff_cache
