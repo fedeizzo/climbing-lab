@@ -1,0 +1,217 @@
+# Example Home Assistant Dashboard Configuration for Tindeq
+#
+# To use this:
+# 1. Go to Settings → Dashboards → Add Dashboard
+# 2. Choose "New dashboard from scratch"
+# 3. Click the three dots → "Raw configuration editor"
+# 4. Paste this YAML (adjust entity IDs if needed)
+
+title: Tindeq Training
+views:
+  - title: Overview
+    path: overview
+    icon: mdi:dumbbell
+    cards:
+      # Training Stats Summary
+      - type: entities
+        title: Training Stats
+        entities:
+          - entity: sensor.tindeq_total_sessions
+            name: Total Sessions
+            icon: mdi:counter
+          - entity: sensor.tindeq_last_session
+            name: Last Session
+            icon: mdi:clock-outline
+          - entity: sensor.tindeq_training_frequency
+            name: Sessions/Week
+            icon: mdi:calendar-check
+          - entity: sensor.tindeq_current_streak
+            name: Current Streak
+            icon: mdi:fire
+          - entity: sensor.tindeq_longest_streak
+            name: Best Streak
+            icon: mdi:trophy
+
+      # Time of Day Split
+      - type: horizontal-stack
+        cards:
+          - type: statistic
+            entity: sensor.tindeq_morning_sessions
+            name: Morning
+            icon: mdi:weather-sunset-up
+            stat_type: total
+          - type: statistic
+            entity: sensor.tindeq_evening_sessions
+            name: Evening
+            icon: mdi:weather-sunset-down
+            stat_type: total
+
+      # Current Streak Gauge
+      - type: gauge
+        entity: sensor.tindeq_current_streak
+        name: Current Streak
+        min: 0
+        max: 30
+        severity:
+          green: 7
+          yellow: 3
+          red: 0
+        needle: true
+
+      # Performance Trends
+      - type: entities
+        title: Performance Trends (30 days)
+        entities:
+          - entity: sensor.tindeq_max_force_trend
+            name: Max Force Change
+            icon: mdi:trending-up
+          - entity: sensor.tindeq_avg_force_trend
+            name: Avg Force Change
+            icon: mdi:chart-line
+          - entity: sensor.tindeq_left_right_balance
+            name: L/R Balance
+            icon: mdi:scale-balance
+
+      # Balance Gauge
+      - type: gauge
+        entity: sensor.tindeq_left_right_balance
+        name: Left/Right Balance
+        unit: "%"
+        min: 0
+        max: 100
+        needle: true
+        segments:
+          - from: 0
+            color: '#db4437'
+            label: Imbalanced
+          - from: 85
+            color: '#ffa600'
+            label: Good
+          - from: 95
+            color: '#43a047'
+            label: Excellent
+
+  - title: Recovery & Fatigue
+    path: recovery
+    icon: mdi:sleep
+    cards:
+      # Recovery Quality
+      - type: gauge
+        entity: sensor.tindeq_recovery_quality
+        name: Recovery Quality
+        min: -20
+        max: 20
+        severity:
+          green: 5
+          yellow: 0
+          red: -10
+
+      # Session Fatigue
+      - type: gauge
+        entity: sensor.tindeq_intra_session_fatigue
+        name: Session Fatigue
+        min: -20
+        max: 5
+        severity:
+          green: -5
+          yellow: -10
+          red: -15
+
+      # Recovery & Fatigue Stats
+      - type: entities
+        title: Recovery & Fatigue Metrics
+        entities:
+          - entity: sensor.tindeq_recovery_quality
+            name: Recovery Quality
+            icon: mdi:sleep
+          - entity: sensor.tindeq_intra_session_fatigue
+            name: Session Fatigue
+            icon: mdi:battery-alert
+
+  - title: Trends
+    path: trends
+    icon: mdi:chart-line
+    cards:
+      # Performance History
+      - type: history-graph
+        title: Performance Trends
+        entities:
+          - entity: sensor.tindeq_max_force_trend
+            name: Max Force
+          - entity: sensor.tindeq_avg_force_trend
+            name: Avg Force
+        hours_to_show: 168  # 1 week
+        refresh_interval: 300
+
+      # Training Frequency History
+      - type: history-graph
+        title: Training Frequency
+        entities:
+          - entity: sensor.tindeq_training_frequency
+        hours_to_show: 720  # 30 days
+        refresh_interval: 300
+
+      # Streak History
+      - type: history-graph
+        title: Training Streaks
+        entities:
+          - entity: sensor.tindeq_current_streak
+        hours_to_show: 720  # 30 days
+        refresh_interval: 300
+
+      # Balance History
+      - type: history-graph
+        title: Left/Right Balance
+        entities:
+          - entity: sensor.tindeq_left_right_balance
+        hours_to_show: 168  # 1 week
+        refresh_interval: 300
+
+  - title: Stats
+    path: stats
+    icon: mdi:chart-box-outline
+    cards:
+      # All Sensors in One View
+      - type: entities
+        title: All Metrics
+        show_header_toggle: false
+        entities:
+          - type: section
+            label: Consistency
+          - entity: sensor.tindeq_training_frequency
+          - entity: sensor.tindeq_current_streak
+          - entity: sensor.tindeq_longest_streak
+          - entity: sensor.tindeq_morning_sessions
+          - entity: sensor.tindeq_evening_sessions
+
+          - type: section
+            label: Performance
+          - entity: sensor.tindeq_max_force_trend
+          - entity: sensor.tindeq_avg_force_trend
+          - entity: sensor.tindeq_left_right_balance
+
+          - type: section
+            label: Recovery & Fatigue
+          - entity: sensor.tindeq_intra_session_fatigue
+          - entity: sensor.tindeq_recovery_quality
+
+          - type: section
+            label: General
+          - entity: sensor.tindeq_last_session
+          - entity: sensor.tindeq_total_sessions
+
+      # Mini Statistics Cards
+      - type: horizontal-stack
+        cards:
+          - type: statistic
+            entity: sensor.tindeq_current_streak
+            name: Streak
+            stat_type: mean
+          - type: statistic
+            entity: sensor.tindeq_training_frequency
+            name: Frequency
+            stat_type: mean
+          - type: statistic
+            entity: sensor.tindeq_max_force_trend
+            name: Max Trend
+            stat_type: mean

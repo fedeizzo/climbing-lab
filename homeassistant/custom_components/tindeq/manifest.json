@@ -1,0 +1,11 @@
+{
+  "domain": "tindeq",
+  "name": "Tindeq Training Tracker",
+  "codeowners": ["@fedeizzo"],
+  "config_flow": true,
+  "documentation": "https://github.com/fedeizzo/tindeq-exporter",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "requirements": ["pandas>=2.0.0", "pyarrow>=14.0.0", "numpy>=1.16.6"],
+  "version": "0.1.0"
+}

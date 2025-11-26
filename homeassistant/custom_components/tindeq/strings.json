@@ -1,0 +1,37 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configure Tindeq Training Tracker",
+        "description": "Set up your Tindeq training data integration. The storage directory should point to where your tindeq data is stored (managed by the systemd service).",
+        "data": {
+          "storage_dir": "Storage Directory Path",
+          "scan_interval": "Update Interval (seconds)"
+        },
+        "data_description": {
+          "storage_dir": "Full path to the tindeq storage directory (e.g., /var/lib/tindeq/tindeq_data)",
+          "scan_interval": "How often to update sensor data (default: 300 seconds / 5 minutes)"
+        }
+      }
+    },
+    "error": {
+      "storage_dir_not_found": "Storage directory does not exist. Please create it or check the path.",
+      "storage_dir_not_directory": "Path is not a directory.",
+      "storage_dir_no_permission": "No permission to access the storage directory."
+    },
+    "abort": {
+      "already_configured": "This storage directory is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Tindeq Options",
+        "description": "Configure update behavior for Tindeq sensors.",
+        "data": {
+          "scan_interval": "Update Interval (seconds)"
+        }
+      }
+    }
+  }
+}
