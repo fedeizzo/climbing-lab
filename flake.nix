@@ -40,7 +40,7 @@
             description = "Import and analyze Tindeq finger training data";
             homepage = "https://github.com/fedeizzo/tindeq-exporter";
             license = licenses.mit;
-            maintainers = [];
+            maintainers = [ ];
           };
         };
 
@@ -49,15 +49,15 @@
           # Use buildHomeAssistantComponent from home-assistant package
           buildHomeAssistantComponent =
             pkgs.home-assistant.python.pkgs.buildHomeAssistantComponent or
-            # Fallback: create a simple builder if not available
-            ({ domain, src, dependencies, ... }: pkgs.stdenv.mkDerivation {
-              name = "hass-component-${domain}";
-              inherit src;
-              installPhase = ''
-                mkdir -p $out
-                cp -r . $out/
-              '';
-            });
+              # Fallback: create a simple builder if not available
+              ({ domain, src, dependencies, ... }: pkgs.stdenv.mkDerivation {
+                name = "hass-component-${domain}";
+                inherit src;
+                installPhase = ''
+                  mkdir -p $out
+                  cp -r . $out/
+                '';
+              });
           inherit (pkgs.python3Packages) pandas pyarrow numpy;
         };
 
@@ -88,6 +88,7 @@
           buildInputs = with pkgs; [
             pythonEnv
             poetry
+            convco
 
             ruff
             python3Packages.black
