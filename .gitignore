@@ -1,0 +1,13 @@
+.claude
+.ipynb_checkpoints
+.venv
+__pycache__
+tindeq_data
+to_process
+vibecoded
+exports
+.ropeproject
+.direnv
+*.zip
+result
+.ruff_cache
