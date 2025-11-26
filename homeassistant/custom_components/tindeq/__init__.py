@@ -148,6 +148,21 @@ class TindeqDataUpdateCoordinator(DataUpdateCoordinator):
                     ) / len([r for r in recovery["recoveries"] if r["improvement_percent"] is not None])
                     data["recovery_quality"] = avg_recovery
 
+            # Analyze peakload data (last 30 days)
+            peakload_analysis = analytics.analyze_peakload_trends(days=30)
+            if peakload_analysis and 'error' not in peakload_analysis:
+                data["peakload_count"] = peakload_analysis["entry_count"]
+                data["peakload_left_current"] = peakload_analysis["left"]["current"]
+                data["peakload_right_current"] = peakload_analysis["right"]["current"]
+                data["peakload_left_max"] = peakload_analysis["left"]["max"]
+                data["peakload_right_max"] = peakload_analysis["right"]["max"]
+                data["peakload_balance"] = peakload_analysis["balance"]["average"]
+
+                if peakload_analysis["left"]["trend"]:
+                    data["peakload_left_trend"] = peakload_analysis["left"]["trend"]["change_percent"]
+                if peakload_analysis["right"]["trend"]:
+                    data["peakload_right_trend"] = peakload_analysis["right"]["trend"]["change_percent"]
+
         except Exception as err:
             _LOGGER.error("Error fetching Tindeq data: %s", err)
             raise
