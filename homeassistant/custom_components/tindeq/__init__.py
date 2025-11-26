@@ -123,31 +123,19 @@ class TindeqDataUpdateCoordinator(DataUpdateCoordinator):
                 # In the future, this could be configurable
                 primary_exercise = exercises_list[0]["exercise_name"]
 
-                performance = analytics.analyze_performance(exercise_name=primary_exercise, days=30)
-                if performance:
-                    data["max_force_trend"] = performance["trends"]["max_force"]["change_percent"]
-                    data["avg_force_trend"] = performance["trends"]["avg_force"]["change_percent"]
+                performance = analytics.analyze_performance(exercise=primary_exercise, days=30)
+                if performance and "error" not in performance:
+                    data["max_force_trend"] = performance["trend"]["change_percent"]
+                    data["avg_force_trend"] = performance["trend"]["change_percent"]
 
-                    if performance["balance"]:
-                        data["left_right_balance"] = performance["balance"]["balance_score"]
-
-                # Analyze fatigue
-                fatigue = analytics.analyze_session_fatigue(exercise_name=primary_exercise, days=7)
-                if fatigue and fatigue["sessions"]:
-                    # Average fatigue across recent sessions
-                    avg_fatigue = sum(
-                        s["fatigue_percent"] for s in fatigue["sessions"] if s["fatigue_percent"] is not None
-                    ) / len([s for s in fatigue["sessions"] if s["fatigue_percent"] is not None])
-                    data["intra_session_fatigue"] = avg_fatigue
+                    if performance.get("left_right_balance"):
+                        data["left_right_balance"] = performance["left_right_balance"]["balance_score"]
 
                 # Analyze recovery
-                recovery = analytics.analyze_recovery(exercise_name=primary_exercise, days=7)
-                if recovery and recovery["recoveries"]:
-                    # Average recovery quality
-                    avg_recovery = sum(
-                        r["improvement_percent"] for r in recovery["recoveries"] if r["improvement_percent"] is not None
-                    ) / len([r for r in recovery["recoveries"] if r["improvement_percent"] is not None])
-                    data["recovery_quality"] = avg_recovery
+                recovery = analytics.analyze_recovery(exercise=primary_exercise, days=7)
+                if recovery and "error" not in recovery:
+                    if recovery.get("recovery_quality"):
+                        data["recovery_quality"] = recovery["recovery_quality"]["avg_recovery_pct"]
 
             # Analyze peakload data (last 30 days)
             peakload_analysis = analytics.analyze_peakload_trends(days=30)

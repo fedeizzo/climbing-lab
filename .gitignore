@@ -3,6 +3,7 @@
 .venv
 __pycache__
 tindeq_data
+test_tindeq_data
 to_process
 vibecoded
 exports

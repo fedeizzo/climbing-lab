@@ -575,7 +575,7 @@ class TindeqStorage:
                 try:
                     # Try standard ISO format first
                     date = pd.to_datetime(date_str)
-                except _:
+                except Exception:
                     # Try parsing as day-month-year
                     parts = date_str.split(" ")
                     date_part = parts[0]

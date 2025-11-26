@@ -57,7 +57,7 @@ def cmd_import(args):
 
 def cmd_list(args):
     """List all sessions"""
-    storage = TindeqStorage(args.storae_dir)
+    storage = TindeqStorage(args.storage_dir)
     sessions = storage.list_sessions(tag=args.tag, start_date=args.from_date, end_date=args.to_date)
 
     if sessions.empty:
