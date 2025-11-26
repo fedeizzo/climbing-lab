@@ -44,6 +44,23 @@
           };
         };
 
+        # Home Assistant custom component
+        tindeq-homeassistant = pkgs.callPackage ./homeassistant {
+          # Use buildHomeAssistantComponent from home-assistant package
+          buildHomeAssistantComponent =
+            pkgs.home-assistant.python.pkgs.buildHomeAssistantComponent or
+            # Fallback: create a simple builder if not available
+            ({ domain, src, dependencies, ... }: pkgs.stdenv.mkDerivation {
+              name = "hass-component-${domain}";
+              inherit src;
+              installPhase = ''
+                mkdir -p $out
+                cp -r . $out/
+              '';
+            });
+          inherit (pkgs.python3Packages) pandas pyarrow numpy;
+        };
+
         # Python environment for development
         pythonEnv = pkgs.python3.withPackages (ps: with ps; [
           pandas
@@ -59,6 +76,7 @@
         packages = {
           default = tindeq-exporter;
           tindeq-exporter = tindeq-exporter;
+          homeassistant-component = tindeq-homeassistant;
         };
 
         apps.default = {

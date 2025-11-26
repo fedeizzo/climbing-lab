@@ -33,7 +33,39 @@ This integration provides sensors for:
 
 ## Installation
 
-### Method 1: Manual Installation
+### Method 1: NixOS (Recommended)
+
+If you're running Home Assistant on NixOS, use the packaged component:
+
+1. Add the flake to your inputs:
+   ```nix
+   inputs.tindeq-exporter.url = "github:fedeizzo/tindeq-exporter";
+   ```
+
+2. Add the custom component to your Home Assistant configuration:
+   ```nix
+   services.home-assistant = {
+     enable = true;
+     customComponents = [
+       inputs.tindeq-exporter.packages.${pkgs.system}.homeassistant-component
+     ];
+   };
+   ```
+
+3. Ensure Home Assistant can access the storage directory:
+   ```nix
+   users.users.hass.extraGroups = [ "tindeq" ];
+   ```
+
+4. Rebuild your system and restart Home Assistant
+
+5. Go to **Settings → Devices & Services → Add Integration**
+
+6. Search for "Tindeq" and configure with your storage path
+
+See `nixos-example.nix` for a complete example configuration.
+
+### Method 2: Manual Installation
 
 1. Copy the `custom_components/tindeq` directory to your Home Assistant `custom_components` folder:
    ```bash
@@ -48,7 +80,7 @@ This integration provides sensors for:
 
 5. Enter your storage directory path (e.g., `/var/lib/tindeq/tindeq_data`)
 
-### Method 2: HACS (Future)
+### Method 3: HACS (Future)
 
 _This integration is not yet available via HACS but may be added in the future._
 
