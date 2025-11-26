@@ -93,18 +93,6 @@ The storage directory should point to where the systemd service stores data:
 - Must be readable by the Home Assistant user
 - Should contain `tindeq.db` and parquet files (created by tindeq-exporter)
 
-### Permissions
-
-If Home Assistant runs as a different user than the tindeq service, you may need to:
-
-```bash
-# Add homeassistant user to tindeq group
-sudo usermod -a -G tindeq homeassistant
-
-# Or make the database readable
-sudo chmod -R 755 /var/lib/tindeq
-```
-
 ### Update Interval
 
 Default: 300 seconds (5 minutes)
@@ -269,7 +257,3 @@ tail -f ~/.homeassistant/home-assistant.log | grep tindeq
 - [ ] MQTT discovery support
 - [ ] Multi-exercise tracking
 - [ ] Configurable analytics windows (7/14/30 days)
-
-## License
-
-MIT
