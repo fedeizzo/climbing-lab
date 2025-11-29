@@ -11,7 +11,7 @@ in
 
     package = mkOption {
       type = types.package;
-      default = pkgs.callPackage ../. { };
+      default = pkgs.callPackage ../tindeq_exporter/. { };
       defaultText = literalExpression "pkgs.callPackage ../. { }";
       description = "The tindeq-exporter package to use";
     };
@@ -78,37 +78,11 @@ in
           set -e
 
           export STORAGE_DIR="${cfg.databaseDirectory}/tindeq_data"
-
-          # Find all zip files
-          shopt -s nullglob
-          zipfiles=(${cfg.watchDirectory}/*.zip)
-
-          if [ ''${#zipfiles[@]} -eq 0 ]; then
-            echo "No zip files found in ${cfg.watchDirectory}"
-            exit 0
-          fi
-
-          echo "Found ''${#zipfiles[@]} zip file(s) to import"
-
-          for zipfile in "''${zipfiles[@]}"; do
-            echo "Importing: $zipfile"
-
-            # Detect if it's a batch export by filename
-            if [[ "$(basename "$zipfile")" == *"batch_export"* ]]; then
-              ${cfg.package}/bin/tindeq --storage-dir "$STORAGE_DIR" \
-                import --batch "$zipfile" ${optionalString cfg.deleteAfterImport "--delete-after"}
-            else
-              ${cfg.package}/bin/tindeq --storage-dir "$STORAGE_DIR" \
-                import "$zipfile" ${optionalString cfg.deleteAfterImport "--delete-after"}
-            fi
-
-            if [ $? -eq 0 ]; then
-              echo "Successfully imported: $zipfile"
-            else
-              echo "Failed to import: $zipfile"
-            fi
-          done
-        '';
+          export DELETE_APPENDIX=${optionalString cfg.deleteAfterImport "--delete-after"}
+          export SHOULD_DELETE=${builtins.toString cfg.deleteAfterImport} # check using "1" for true and "" for false
+          export WATCH_DIR="${cfg.watchDirectory}"
+          export TINDEQ="${cfg.package}/bin/tindeq"
+        '' + builtins.readFile ./exec-start.sh;
 
         # Security hardening
         PrivateTmp = true;
