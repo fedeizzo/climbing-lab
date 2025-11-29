@@ -13,3 +13,4 @@ exports
 *.csv
 result
 .ruff_cache
+.pre-commit-config.yaml
