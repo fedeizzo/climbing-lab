@@ -30,14 +30,15 @@
           type = "app";
           program = "${pkgs.callPackage ./tindeq_exporter { inherit pkgs; }}/bin/tindeq";
         };
-        
+
         packages.default = pkgs.callPackage ./tindeq_exporter { inherit pkgs; };
         packages.tindeq-exporter = pkgs.callPackage ./tindeq_exporter { inherit pkgs; };
-        packages.homeassistant-component = pkgs.callPackage ./homeassistant {
-          # Use buildHomeAssistantComponent from home-assistant package
-          buildHomeAssistantComponent = pkgs.home-assistant.python.pkgs.buildHomeAssistantComponent;
-          inherit (pkgs.python3Packages) pandas pyarrow numpy;
-        };
+        packages.homeassistant-component = pkgs.callPackage ./homeassistant { };
+        # packages.homeassistant-component = pkgs.callPackage ./homeassistant {
+        #   # Use buildHomeAssistantComponent from home-assistant package
+        #   buildHomeAssistantComponent = pkgs.home-assistant.python.pkgs.buildHomeAssistantComponent;
+        #   inherit (pkgs.python3Packages) pandas pyarrow numpy;
+        # };
       };
     });
 }

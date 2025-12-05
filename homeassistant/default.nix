@@ -1,10 +1,6 @@
-{ buildHomeAssistantComponent
-, pandas
-, pyarrow
-, numpy
-}:
+{ buildHomeAssistantComponent, python3Packages }:
 
-buildHomeAssistantComponent rec {
+buildHomeAssistantComponent {
   owner = "fedeizzo";
   domain = "tindeq";
   version = "0.1.0";
@@ -12,7 +8,7 @@ buildHomeAssistantComponent rec {
   src = ./custom_components/tindeq;
 
   # Python dependencies required by the component
-  dependencies = [
+  dependencies = with python3Packages; [
     pandas
     pyarrow
     numpy
