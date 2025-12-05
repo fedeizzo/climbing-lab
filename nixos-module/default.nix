@@ -58,6 +58,16 @@ in
     };
 
     users.groups.${cfg.group} = mkIf (cfg.group == "tindeq") { };
+    environment.systemPackages = [
+      (pkgs.writeShellScriptBin "tindeq" ''
+        set -e
+
+        export STORAGE_DIR="${cfg.databaseDirectory}/tindeq_data"
+        export TINDEQ="${cfg.package}/bin/tindeq"
+
+        $TINDEQ --storage-dir $STORAGE_DIR $@
+      '')
+    ];
 
     # Ensure directories exist with correct permissions
     systemd.tmpfiles.rules = [

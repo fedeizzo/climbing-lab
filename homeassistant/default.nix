@@ -12,6 +12,8 @@ buildHomeAssistantComponent {
     pandas
     pyarrow
     numpy
+  ] ++ [
+    (pkgs.callPackage ../tindeq_exporter { })
   ];
 
   meta = {
