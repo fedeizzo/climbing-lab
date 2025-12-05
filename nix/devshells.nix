@@ -11,19 +11,19 @@
 
     packages = with pkgs; [
       (pkgs.python3.withPackages (ps: with ps;
-                  [
-                    pandas
-                    pyarrow
-                    numpy
-                    # Dev dependencies
-                    pytest
-                    ipython
-                  ]))
-                  poetry
-                  convco
-      
-                  ruff
-                  python3Packages.black
+      [
+        pandas
+        pyarrow
+        numpy
+        # Dev dependencies
+        pytest
+        ipython
+      ]))
+      poetry
+      convco
+
+      ruff
+      python3Packages.black
     ] ++ config.pre-commit.settings.enabledPackages;
 
     devshell.startup.pre-commit-hooks.text = config.pre-commit.installationScript;

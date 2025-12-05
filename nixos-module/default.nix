@@ -51,7 +51,7 @@ in
     # Create user and group
     users.users.${cfg.user} = mkIf (cfg.user == "tindeq") {
       isSystemUser = true;
-      group = cfg.group;
+      inherit group;
       home = cfg.databaseDirectory;
       createHome = true;
       description = "Tindeq exporter service user";

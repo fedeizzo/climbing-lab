@@ -31,14 +31,14 @@
 
     # Ensure Home Assistant can access the tindeq storage directory
     extraComponents = [
-      "met"  # Weather
+      "met" # Weather
       "radio_browser"
       # ... other components
     ];
 
     config = {
       # Home Assistant configuration.yaml
-      default_config = {};
+      default_config = { };
 
       http = {
         server_port = 8123;

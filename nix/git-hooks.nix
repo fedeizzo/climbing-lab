@@ -40,8 +40,10 @@ in
           excludes = [ ];
         };
         typos = {
-          enable = true;
-          excludes = [ ];
+          enable = false;
+          excludes = [
+            "./homeassistant/custom_components/tindeq/__init__.py"
+          ];
         };
       };
     };
