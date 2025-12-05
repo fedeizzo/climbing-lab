@@ -6,6 +6,7 @@
     flake-parts.url = "github:hercules-ci/flake-parts";
     devshell.url = "github:numtide/devshell";
     git-hooks-nix.url = "github:cachix/git-hooks.nix";
+    rust-overlay.url = "github:oxalica/rust-overlay";
   };
 
   outputs = inputs@{ flake-parts, ... }:
@@ -20,7 +21,13 @@
       };
       systems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
 
-      perSystem = { config, pkgs, ... }: {
+      perSystem = { config, pkgs, system, ... }: {
+        _module.args.pkgs = import inputs.nixpkgs {
+          inherit system;
+          overlays = [
+            inputs.rust-overlay.overlays.default
+          ];
+        };
         imports = [
           ./nix/devshells.nix
           ./nix/git-hooks.nix
