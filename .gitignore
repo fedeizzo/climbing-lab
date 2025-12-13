@@ -2,10 +2,6 @@
 .ipynb_checkpoints
 .venv
 __pycache__
-tindeq_data
-test_tindeq_data
-to_process
-vibecoded
 exports
 .ropeproject
 .direnv
@@ -14,3 +10,15 @@ exports
 result
 .ruff_cache
 .pre-commit-config.yaml
+
+
+# Added by cargo
+
+/target
+
+
+# tindeq development
+tindeq_data
+test_tindeq_data
+to_process
+data.db

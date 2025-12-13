@@ -1,0 +1,25 @@
+[package]
+name = "climbing-lab"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+chrono = { version = "0.4.42", features = ["serde"] }
+clap = { version = "4.5.53", features = ["derive"] }
+csv = "1.4.0"
+ordered-float = "5.1.0"
+refinery = { version = "0.9.0", features = ["rusqlite"] }
+rusqlite = { version = "0.37.0", features = ["bundled"] }
+serde = { version = "1.0.228", features = ["derive"] }
+tabled = "0.20.0"
+tempdir = "0.3.7"
+thiserror = "2.0.17"
+zip = "6.0.0"
+
+[[bin]]
+name = "tindeq-importer"
+path = "src/bin/tindeq-importer/main.rs"
+
+[lib]
+name = "tindeqimporter"
+path = "src/lib/lib.rs"

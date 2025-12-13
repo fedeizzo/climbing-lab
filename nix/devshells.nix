@@ -24,6 +24,17 @@
 
       ruff
       python3Packages.black
+
+      # rust
+      openssl
+      pkg-config
+      sqlite
+      sqlite-web
+      sqlx-cli
+      (rust-bin.stable.latest.default.override {
+        extensions = [ "rust-analyzer" "rust-src" "rustfmt" "clippy" ];
+      })
+      refinery-cli # sql migrations
     ] ++ config.pre-commit.settings.enabledPackages;
 
     devshell.startup.pre-commit-hooks.text = config.pre-commit.installationScript;
